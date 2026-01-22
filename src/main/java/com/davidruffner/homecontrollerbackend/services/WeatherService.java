@@ -8,6 +8,7 @@ import com.davidruffner.homecontrollerbackend.exceptions.ControllerException;
 import com.davidruffner.homecontrollerbackend.utils.Utils;
 import com.davidruffner.homecontrollerbackend.utils.Utils.ZonedRange;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -924,8 +925,10 @@ public class WeatherService {
         }
     }
 
+    @JsonPropertyOrder({ "totalPeriods", "precipitationPeriods", "errMsg", "shortCode" })
     public static class GetPrecipitationTrendsResponse {
         private final List<HourlyPrecipitation> precipitationPeriods;
+        private final Integer totalPeriods;
         private final String errMsg;
         private final ShortCode shortCode;
 
@@ -933,6 +936,7 @@ public class WeatherService {
             this.precipitationPeriods = new ArrayList<>();
             this.errMsg = null;
             this.shortCode = ShortCode.SUCCESS;
+            this.totalPeriods = hourlyPeriods.size();
 
             hourlyPeriods.forEach(p -> {
                 p.setZonedStartTime(userSettings.getTimeZone());
@@ -950,6 +954,7 @@ public class WeatherService {
 
         public GetPrecipitationTrendsResponse(String errMsg, ShortCode shortCode) {
             this.precipitationPeriods = null;
+            this.totalPeriods = null;
             this.errMsg = errMsg;
             this.shortCode = shortCode;
         }
@@ -964,6 +969,10 @@ public class WeatherService {
 
         public ShortCode getShortCode() {
             return shortCode;
+        }
+
+        public Integer getTotalPeriods() {
+            return totalPeriods;
         }
     }
 
@@ -988,20 +997,77 @@ public class WeatherService {
         ZonedDateTime startDay = ZonedDateTime.ofInstant(Instant.now(),
             ZoneId.of(userSettings.getTimeZone()));
         ZonedDateTime startTime = startDay.toLocalDate().atStartOfDay(startDay.getZone());
+        List<NWSHourlyPeriod> filteredPeriods = new ArrayList<>();
+        List<NWSHourlyPeriod> timeFiltered = new ArrayList<>();
 
         switch (trendType) {
-            case ONE_DAY -> endTime = startTime.plusDays(1).minusNanos(1);
-            case TWO_DAY -> endTime = startTime.plusDays(2).minusNanos(1);
-            case THREE_DAY -> endTime = startTime.plusDays(3).minusNanos(1);
-            case FIVE_DAY -> endTime = startTime.plusDays(5).minusNanos(1);
-            case SEVEN_DAY -> endTime = startTime.plusDays(7).minusNanos(1);
+            case ONE_DAY:
+                endTime = startTime.plusDays(1).minusNanos(1);
+                filteredPeriods = hourlyPeriods.stream()
+                    .filter(p -> p.startTime.isAfter(startTime.toInstant().minusSeconds(1))
+                        && p.endTime.isBefore(startTime.plusDays(1)
+                        .minusNanos(1).toInstant().plusSeconds(1)))
+                    .toList();
+                break;
+
+            case TWO_DAY:
+                endTime = startTime.plusDays(2).minusNanos(1);
+                timeFiltered = hourlyPeriods.stream()
+                    .filter(p -> p.startTime.isAfter(startTime.toInstant().minusSeconds(1))
+                    && p.endTime.isBefore(startTime.plusDays(2)
+                        .minusNanos(1).toInstant().plusSeconds(1)))
+                    .toList();
+
+                // Skip every other entry to still wind up with 18 entries
+                for (int i = 0; i < timeFiltered.size(); i += 2) {
+                    filteredPeriods.add(timeFiltered.get(i));
+                }
+                break;
+
+            case THREE_DAY:
+                endTime = startTime.plusDays(3).minusNanos(1);
+                timeFiltered = hourlyPeriods.stream()
+                    .filter(p -> p.startTime.isAfter(startTime.toInstant().minusSeconds(1))
+                        && p.endTime.isBefore(startTime.plusDays(3)
+                        .minusNanos(1).toInstant().plusSeconds(1)))
+                    .toList();
+
+                // Skip to every third entry to wind up with 18 total entries
+                for (int i = 0; i < timeFiltered.size(); i += 3) {
+                    filteredPeriods.add(timeFiltered.get(i));
+                }
+                break;
+
+            case FIVE_DAY:
+                endTime = startTime.plusDays(5).minusNanos(1);
+                timeFiltered = hourlyPeriods.stream()
+                    .filter(p -> p.startTime.isAfter(startTime.toInstant().minusSeconds(1))
+                        && p.endTime.isBefore(startTime.plusDays(5)
+                        .minusNanos(1).toInstant().plusSeconds(1)))
+                    .toList();
+
+                // Skip to every fifth entry to wind up with 18 total entries
+                for (int i = 0; i < timeFiltered.size(); i += 5) {
+                    filteredPeriods.add(timeFiltered.get(i));
+                }
+                break;
+
+            case SEVEN_DAY:
+                endTime = startTime.plusDays(7).minusNanos(1);
+                timeFiltered = hourlyPeriods.stream()
+                    .filter(p -> p.startTime.isAfter(startTime.toInstant().minusSeconds(1))
+                        && p.endTime.isBefore(startTime.plusDays(7)
+                        .minusNanos(1).toInstant().plusSeconds(1)))
+                    .toList();
+
+                // Skip to every seventh entry to wind up with 18 total entries
+                for (int i = 0; i < timeFiltered.size(); i += 7) {
+                    filteredPeriods.add(timeFiltered.get(i));
+                }
+                break;
         }
 
         ZonedDateTime finalEndTime = endTime;
-        return new GetPrecipitationTrendsResponse(userSettings, hourlyPeriods.stream()
-            .filter(p -> p.startTime.isAfter(startTime.toInstant().minusSeconds(1))
-                && p.endTime.isBefore(finalEndTime.toInstant().plusSeconds(1)))
-            .toList()
-        );
+        return new GetPrecipitationTrendsResponse(userSettings, filteredPeriods);
     }
 }
