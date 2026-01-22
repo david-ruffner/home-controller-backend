@@ -3,6 +3,7 @@ package com.davidruffner.homecontrollerbackend.services;
 import com.davidruffner.homecontrollerbackend.entities.UserSettings;
 import com.davidruffner.homecontrollerbackend.enums.ResponseCode;
 import com.davidruffner.homecontrollerbackend.enums.ShortCode;
+import com.davidruffner.homecontrollerbackend.enums.TrendType;
 import com.davidruffner.homecontrollerbackend.exceptions.ControllerException;
 import com.davidruffner.homecontrollerbackend.utils.Utils;
 import com.davidruffner.homecontrollerbackend.utils.Utils.ZonedRange;
@@ -14,17 +15,20 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
-import java.time.*;
+import java.time.DayOfWeek;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.davidruffner.homecontrollerbackend.utils.Utils.dayBounds;
-import static com.davidruffner.homecontrollerbackend.utils.Utils.dayBoundsSameDay;
+import static com.davidruffner.homecontrollerbackend.enums.ShortCode.SYSTEM_EXCEPTION;
+import static com.davidruffner.homecontrollerbackend.utils.Utils.*;
 import static com.davidruffner.homecontrollerbackend.utils.WeatherUtils.calculateFeelsLikeTemp;
 import static com.davidruffner.homecontrollerbackend.utils.WeatherUtils.getAvgWindSpeedFromStr;
-import static java.lang.System.out;
 import static java.util.Map.entry;
 
 @Service
@@ -533,7 +537,7 @@ public class WeatherService {
             .filter(p -> p.getName().equals(tomorrowName))
             .findFirst()
             .orElseThrow(() -> new ControllerException("Can't find any tomorrow's periods", ResponseCode.SYSTEM_EXCEPTION,
-                ShortCode.SYSTEM_EXCEPTION.toString()));
+                SYSTEM_EXCEPTION.toString()));
 
         String forecastAPI = getForecastAPI(userSettings.getLat(), userSettings.getLon());
         String hourlyAPI = forecastAPI + "/hourly";
@@ -669,7 +673,7 @@ public class WeatherService {
             .filter(p -> p.getName().equals(todayName) || p.getName().equals("Today"))
             .findFirst()
             .orElseThrow(() -> new ControllerException("Can't find any today's periods", ResponseCode.SYSTEM_EXCEPTION,
-                ShortCode.SYSTEM_EXCEPTION.toString()));
+                SYSTEM_EXCEPTION.toString()));
 
         String forecastAPI = getForecastAPI(userSettings.getLat(), userSettings.getLon());
         String hourlyAPI = forecastAPI + "/hourly";
@@ -878,5 +882,126 @@ public class WeatherService {
         List<NWSForecastPeriod> forecastPeriods = forecastResponse.properties().periods();
 
         return new GetThreeDayForecastResponse(forecastPeriods, userSettings);
+    }
+
+    public static class HourlyPrecipitation {
+        private final ZonedDateTime zonedStartTime;
+        private final ZonedDateTime zonedEndTime;
+        private final String twelveHourStartTime;
+        private final String twelveHourEndTime;
+        private final Integer precipitationValue;
+
+        public HourlyPrecipitation(ZonedDateTime zonedStartTime, ZonedDateTime zonedEndTime,
+            Integer precipitationValue) {
+
+            this.zonedStartTime = zonedStartTime;
+            this.zonedEndTime = zonedEndTime;
+            this.precipitationValue = precipitationValue;
+            this.twelveHourStartTime = to12HrFrom24Hr(zonedStartTime.format(
+                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mmXXX")));
+            this.twelveHourEndTime = to12HrFrom24Hr(zonedEndTime.format(
+                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mmXXX")));
+        }
+
+        public ZonedDateTime getZonedStartTime() {
+            return zonedStartTime;
+        }
+
+        public ZonedDateTime getZonedEndTime() {
+            return zonedEndTime;
+        }
+
+        public String getTwelveHourStartTime() {
+            return twelveHourStartTime;
+        }
+
+        public String getTwelveHourEndTime() {
+            return twelveHourEndTime;
+        }
+
+        public Integer getPrecipitationValue() {
+            return precipitationValue;
+        }
+    }
+
+    public static class GetPrecipitationTrendsResponse {
+        private final List<HourlyPrecipitation> precipitationPeriods;
+        private final String errMsg;
+        private final ShortCode shortCode;
+
+        public GetPrecipitationTrendsResponse(UserSettings userSettings, List<NWSHourlyPeriod> hourlyPeriods) {
+            this.precipitationPeriods = new ArrayList<>();
+            this.errMsg = null;
+            this.shortCode = ShortCode.SUCCESS;
+
+            hourlyPeriods.forEach(p -> {
+                p.setZonedStartTime(userSettings.getTimeZone());
+                p.setZonedEndTime(userSettings.getTimeZone());
+
+                this.precipitationPeriods.add(
+                    new HourlyPrecipitation(
+                        p.zonedStartTime,
+                        p.zonedEndTime,
+                        p.getProbabilityOfPrecipitation().value()
+                    )
+                );
+            });
+        }
+
+        public GetPrecipitationTrendsResponse(String errMsg, ShortCode shortCode) {
+            this.precipitationPeriods = null;
+            this.errMsg = errMsg;
+            this.shortCode = shortCode;
+        }
+
+        public List<HourlyPrecipitation> getPrecipitationPeriods() {
+            return precipitationPeriods;
+        }
+
+        public String getErrMsg() {
+            return errMsg;
+        }
+
+        public ShortCode getShortCode() {
+            return shortCode;
+        }
+    }
+
+    public GetPrecipitationTrendsResponse getPrecipitationTrends(UserSettings userSettings, TrendType trendType) {
+
+        String forecastAPI = getForecastAPI(userSettings.getLat(), userSettings.getLon());
+        String hourlyAPI = forecastAPI + "/hourly";
+
+        NWSHourlyResponse response = this.nwsRestController
+            .get()
+            .uri(hourlyAPI)
+            .retrieve()
+            .body(NWSHourlyResponse.class);
+
+        if (response == null) {
+            return new GetPrecipitationTrendsResponse("NWS Hourly Forecast Response Was Null", SYSTEM_EXCEPTION);
+        }
+        List<NWSHourlyPeriod> hourlyPeriods = response.properties.periods;
+
+        ZonedDateTime endTime = ZonedDateTime.ofInstant(Instant.now(),
+            ZoneId.of(userSettings.getTimeZone()));
+        ZonedDateTime startDay = ZonedDateTime.ofInstant(Instant.now(),
+            ZoneId.of(userSettings.getTimeZone()));
+        ZonedDateTime startTime = startDay.toLocalDate().atStartOfDay(startDay.getZone());
+
+        switch (trendType) {
+            case ONE_DAY -> endTime = startTime.plusDays(1).minusNanos(1);
+            case TWO_DAY -> endTime = startTime.plusDays(2).minusNanos(1);
+            case THREE_DAY -> endTime = startTime.plusDays(3).minusNanos(1);
+            case FIVE_DAY -> endTime = startTime.plusDays(5).minusNanos(1);
+            case SEVEN_DAY -> endTime = startTime.plusDays(7).minusNanos(1);
+        }
+
+        ZonedDateTime finalEndTime = endTime;
+        return new GetPrecipitationTrendsResponse(userSettings, hourlyPeriods.stream()
+            .filter(p -> p.startTime.isAfter(startTime.toInstant().minusSeconds(1))
+                && p.endTime.isBefore(finalEndTime.toInstant().plusSeconds(1)))
+            .toList()
+        );
     }
 }
