@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: home-controller-backend
+
+  datasource:
+    username: homecontrols
+    password: password
+    url: jdbc:mysql://localhost:3306/homecontrols
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+app:
+  hashUtil:
+    digestType: SHA-256
+#    jwtKey: In secrets
+
+  userSettings:
+    allowedApps:
+      standard:
+        - dashboard
+        - weather
+        - lights
+        - todo
+        - email
+        - calendar
+        - cars
+        - messages
+        - reminders
+        - userSettings
+      admin:
+        - dashboard
+        - weather
+        - lights
+        - todo
+        - email
+        - calendar
+        - cars
+        - messages
+        - reminders
+        - userSettings
+        - deviceSettings

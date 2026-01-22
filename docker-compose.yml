@@ -1,0 +1,45 @@
+services:
+  app:
+    image: eclipse-temurin:24-jre
+    container_name: home-controller-backend
+    ports:
+      - "8080:8080"
+#    environment:
+#      SPRING_PROFILES_ACTIVE: local,secure
+
+    volumes:
+      - ./target/home-controller-backend-0.0.1-SNAPSHOT.jar:/app/app.jar
+    command: [ "java", "-jar", "/app/app.jar" ]
+
+  mysql:
+    build:
+      context: .docker/
+      dockerfile: DB_Dockerfile.dockerfile
+    container_name: home-controls-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      # 1. Root username is 'root' by default for the image
+      # 2. Root password:
+      MYSQL_ROOT_PASSWORD: password
+      # 4. Create database:
+      MYSQL_DATABASE: homecontrols
+      # 3. Create app user & password:
+      MYSQL_USER: homecontrols
+      MYSQL_PASSWORD: password
+      # The official entrypoint will:
+      # - create 'musedb'
+      # - create 'museapp'@'%' with the given password
+      # - GRANT ALL on musedb.* to 'museapp' (step 5)
+    volumes:
+      # Persist database files
+      - home-control-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-ppassword" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  home-control-mysql-data:
+  home-control-redis-data:
