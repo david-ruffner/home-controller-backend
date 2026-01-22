@@ -102,35 +102,29 @@ public class DashboardController {
     }
 
 
-    @GetMapping("/getTomorrowForecast/{controllerDeviceId}")
+    @GetMapping("/getTomorrowForecast")
     public ResponseEntity<GetTomorrowForecastResponse> getTomorrowForecast(
-        @PathVariable String controllerDeviceId) throws Exception {
+        @RequestHeader("Authorization") String authHeader) throws Exception {
 
-        UserSettings userSettings = this.userSettingsRepo.getUserSettingsByControlDeviceId(controllerDeviceId)
-            .orElseThrow(() -> new ControllerException("Controller Device ID Invalid", ResponseCode.BAD_REQUEST,
-                INVALID_CONTROLLER_ID.toString()));
+        UserSettings userSettings = this.authUtil.verifyJWTToken(authHeader);
 
         return ResponseEntity.ok(this.weatherService.getTomorrowForecastResponse(userSettings));
     }
 
-    @GetMapping("/getThreeDayForecast/{controllerDeviceId}")
+    @GetMapping("/getThreeDayForecast")
     public ResponseEntity<GetThreeDayForecastResponse> getThreeDayForecast(
-        @PathVariable String controllerDeviceId) throws ControllerException {
+        @RequestHeader("Authorization") String authHeader) throws ControllerException {
 
-        UserSettings userSettings = this.userSettingsRepo.getUserSettingsByControlDeviceId(controllerDeviceId)
-            .orElseThrow(() -> new ControllerException("Controller Device ID Invalid", ResponseCode.BAD_REQUEST,
-                INVALID_CONTROLLER_ID.toString()));
+        UserSettings userSettings = this.authUtil.verifyJWTToken(authHeader);
 
         return ResponseEntity.ok(this.weatherService.getThreeDayForecast(userSettings));
     }
 
-    @GetMapping("/getSevenDayForecast/{controllerDeviceId}")
+    @GetMapping("/getSevenDayForecast")
     public ResponseEntity<GetSevenDayForecastResponse> getSevenDayForecast(
-        @PathVariable String controllerDeviceId) throws ControllerException {
+        @RequestHeader("Authorization") String authHeader) throws ControllerException {
 
-        UserSettings userSettings = this.userSettingsRepo.getUserSettingsByControlDeviceId(controllerDeviceId)
-            .orElseThrow(() -> new ControllerException("Controller Device ID Invalid", ResponseCode.BAD_REQUEST,
-                INVALID_CONTROLLER_ID.toString()));
+        UserSettings userSettings = this.authUtil.verifyJWTToken(authHeader);
 
         return ResponseEntity.ok(this.weatherService.getSevenDayForecast(userSettings));
     }
