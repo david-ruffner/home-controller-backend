@@ -3,10 +3,11 @@ package com.davidruffner.homecontrollerbackend.services;
 import com.davidruffner.homecontrollerbackend.entities.UserSettings;
 import com.davidruffner.homecontrollerbackend.enums.ResponseCode;
 import com.davidruffner.homecontrollerbackend.enums.ShortCode;
+import com.davidruffner.homecontrollerbackend.enums.TrendType;
 import com.davidruffner.homecontrollerbackend.exceptions.ControllerException;
-import com.davidruffner.homecontrollerbackend.utils.Utils;
 import com.davidruffner.homecontrollerbackend.utils.Utils.ZonedRange;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -14,17 +15,21 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
-import java.time.*;
+import java.time.DayOfWeek;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.davidruffner.homecontrollerbackend.utils.Utils.dayBounds;
-import static com.davidruffner.homecontrollerbackend.utils.Utils.dayBoundsSameDay;
+import static com.davidruffner.homecontrollerbackend.enums.ShortCode.SUCCESS;
+import static com.davidruffner.homecontrollerbackend.enums.ShortCode.SYSTEM_EXCEPTION;
+import static com.davidruffner.homecontrollerbackend.utils.Utils.*;
 import static com.davidruffner.homecontrollerbackend.utils.WeatherUtils.calculateFeelsLikeTemp;
 import static com.davidruffner.homecontrollerbackend.utils.WeatherUtils.getAvgWindSpeedFromStr;
-import static java.lang.System.out;
 import static java.util.Map.entry;
 
 @Service
@@ -533,7 +538,7 @@ public class WeatherService {
             .filter(p -> p.getName().equals(tomorrowName))
             .findFirst()
             .orElseThrow(() -> new ControllerException("Can't find any tomorrow's periods", ResponseCode.SYSTEM_EXCEPTION,
-                ShortCode.SYSTEM_EXCEPTION.toString()));
+                SYSTEM_EXCEPTION.toString()));
 
         String forecastAPI = getForecastAPI(userSettings.getLat(), userSettings.getLon());
         String hourlyAPI = forecastAPI + "/hourly";
@@ -669,7 +674,7 @@ public class WeatherService {
             .filter(p -> p.getName().equals(todayName) || p.getName().equals("Today"))
             .findFirst()
             .orElseThrow(() -> new ControllerException("Can't find any today's periods", ResponseCode.SYSTEM_EXCEPTION,
-                ShortCode.SYSTEM_EXCEPTION.toString()));
+                SYSTEM_EXCEPTION.toString()));
 
         String forecastAPI = getForecastAPI(userSettings.getLat(), userSettings.getLon());
         String hourlyAPI = forecastAPI + "/hourly";
@@ -878,5 +883,470 @@ public class WeatherService {
         List<NWSForecastPeriod> forecastPeriods = forecastResponse.properties().periods();
 
         return new GetThreeDayForecastResponse(forecastPeriods, userSettings);
+    }
+
+    public static class HourlyPrecipitation {
+        private final ZonedDateTime zonedStartTime;
+        private final ZonedDateTime zonedEndTime;
+        private final String twelveHourStartTime;
+        private final String twelveHourEndTime;
+        private final Integer precipitationValue;
+
+        public HourlyPrecipitation(ZonedDateTime zonedStartTime, ZonedDateTime zonedEndTime,
+            Integer precipitationValue) {
+
+            this.zonedStartTime = zonedStartTime;
+            this.zonedEndTime = zonedEndTime;
+            this.precipitationValue = precipitationValue;
+            this.twelveHourStartTime = to12HrFrom24Hr(zonedStartTime.format(
+                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mmXXX")));
+            this.twelveHourEndTime = to12HrFrom24Hr(zonedEndTime.format(
+                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mmXXX")));
+        }
+
+        public ZonedDateTime getZonedStartTime() {
+            return zonedStartTime;
+        }
+
+        public ZonedDateTime getZonedEndTime() {
+            return zonedEndTime;
+        }
+
+        public String getTwelveHourStartTime() {
+            return twelveHourStartTime;
+        }
+
+        public String getTwelveHourEndTime() {
+            return twelveHourEndTime;
+        }
+
+        public Integer getPrecipitationValue() {
+            return precipitationValue;
+        }
+    }
+
+    private List<NWSHourlyPeriod> getFilteredTimePeriods(TrendType trendType, UserSettings userSettings) {
+        String forecastAPI = getForecastAPI(userSettings.getLat(), userSettings.getLon());
+        String hourlyAPI = forecastAPI + "/hourly";
+
+        NWSHourlyResponse response = this.nwsRestController
+            .get()
+            .uri(hourlyAPI)
+            .retrieve()
+            .body(NWSHourlyResponse.class);
+
+        List<NWSHourlyPeriod> hourlyPeriods = response.properties.periods;
+
+        ZonedDateTime endTime = ZonedDateTime.ofInstant(Instant.now(),
+            ZoneId.of(userSettings.getTimeZone()));
+        ZonedDateTime startDay = ZonedDateTime.ofInstant(Instant.now(),
+            ZoneId.of(userSettings.getTimeZone()));
+        ZonedDateTime startTime = startDay.toLocalDate().atStartOfDay(startDay.getZone());
+        List<NWSHourlyPeriod> filteredPeriods = new ArrayList<>();
+        List<NWSHourlyPeriod> timeFiltered = new ArrayList<>();
+
+        switch (trendType) {
+            case ONE_DAY:
+                endTime = startTime.plusDays(1).minusNanos(1);
+                filteredPeriods = hourlyPeriods.stream()
+                    .filter(p -> p.startTime.isAfter(startTime.toInstant().minusSeconds(1))
+                        && p.endTime.isBefore(startTime.plusDays(1)
+                        .minusNanos(1).toInstant().plusSeconds(1)))
+                    .toList();
+                break;
+
+            case TWO_DAY:
+                endTime = startTime.plusDays(2).minusNanos(1);
+                timeFiltered = hourlyPeriods.stream()
+                    .filter(p -> p.startTime.isAfter(startTime.toInstant().minusSeconds(1))
+                        && p.endTime.isBefore(startTime.plusDays(2)
+                        .minusNanos(1).toInstant().plusSeconds(1)))
+                    .toList();
+
+                // Skip every other entry to still wind up with 18 entries
+                for (int i = 0; i < timeFiltered.size(); i += 2) {
+                    filteredPeriods.add(timeFiltered.get(i));
+                }
+                break;
+
+            case THREE_DAY:
+                endTime = startTime.plusDays(3).minusNanos(1);
+                timeFiltered = hourlyPeriods.stream()
+                    .filter(p -> p.startTime.isAfter(startTime.toInstant().minusSeconds(1))
+                        && p.endTime.isBefore(startTime.plusDays(3)
+                        .minusNanos(1).toInstant().plusSeconds(1)))
+                    .toList();
+
+                // Skip to every third entry to wind up with 18 total entries
+                for (int i = 0; i < timeFiltered.size(); i += 3) {
+                    filteredPeriods.add(timeFiltered.get(i));
+                }
+                break;
+
+            case FIVE_DAY:
+                endTime = startTime.plusDays(5).minusNanos(1);
+                timeFiltered = hourlyPeriods.stream()
+                    .filter(p -> p.startTime.isAfter(startTime.toInstant().minusSeconds(1))
+                        && p.endTime.isBefore(startTime.plusDays(5)
+                        .minusNanos(1).toInstant().plusSeconds(1)))
+                    .toList();
+
+                // Skip to every fifth entry to wind up with 18 total entries
+                for (int i = 0; i < timeFiltered.size(); i += 5) {
+                    filteredPeriods.add(timeFiltered.get(i));
+                }
+                break;
+
+            case SEVEN_DAY:
+                endTime = startTime.plusDays(7).minusNanos(1);
+                timeFiltered = hourlyPeriods.stream()
+                    .filter(p -> p.startTime.isAfter(startTime.toInstant().minusSeconds(1))
+                        && p.endTime.isBefore(startTime.plusDays(7)
+                        .minusNanos(1).toInstant().plusSeconds(1)))
+                    .toList();
+
+                // Skip to every seventh entry to wind up with 18 total entries
+                for (int i = 0; i < timeFiltered.size(); i += 7) {
+                    filteredPeriods.add(timeFiltered.get(i));
+                }
+                break;
+        }
+
+        return filteredPeriods;
+    }
+
+    @JsonPropertyOrder({ "totalPeriods", "precipitationPeriods", "errMsg", "shortCode" })
+    public static class GetPrecipitationTrendsResponse {
+        private final List<HourlyPrecipitation> precipitationPeriods;
+        private final Integer totalPeriods;
+        private final String errMsg;
+        private final ShortCode shortCode;
+
+        public GetPrecipitationTrendsResponse(UserSettings userSettings, List<NWSHourlyPeriod> hourlyPeriods) {
+            this.precipitationPeriods = new ArrayList<>();
+            this.errMsg = null;
+            this.shortCode = ShortCode.SUCCESS;
+            this.totalPeriods = hourlyPeriods.size();
+
+            hourlyPeriods.forEach(p -> {
+                p.setZonedStartTime(userSettings.getTimeZone());
+                p.setZonedEndTime(userSettings.getTimeZone());
+
+                this.precipitationPeriods.add(
+                    new HourlyPrecipitation(
+                        p.zonedStartTime,
+                        p.zonedEndTime,
+                        p.getProbabilityOfPrecipitation().value()
+                    )
+                );
+            });
+        }
+
+        public GetPrecipitationTrendsResponse(String errMsg, ShortCode shortCode) {
+            this.precipitationPeriods = null;
+            this.totalPeriods = null;
+            this.errMsg = errMsg;
+            this.shortCode = shortCode;
+        }
+
+        public List<HourlyPrecipitation> getPrecipitationPeriods() {
+            return precipitationPeriods;
+        }
+
+        public String getErrMsg() {
+            return errMsg;
+        }
+
+        public ShortCode getShortCode() {
+            return shortCode;
+        }
+
+        public Integer getTotalPeriods() {
+            return totalPeriods;
+        }
+    }
+
+    public GetPrecipitationTrendsResponse getPrecipitationTrends(UserSettings userSettings, TrendType trendType) {
+        List<NWSHourlyPeriod> filteredPeriods = getFilteredTimePeriods(trendType, userSettings);
+        return new GetPrecipitationTrendsResponse(userSettings, filteredPeriods);
+    }
+
+    public static class HourlyHumidity {
+        private final ZonedDateTime zonedStartTime;
+        private final ZonedDateTime zonedEndTime;
+        private final String twelveHourStartTime;
+        private final String twelveHourEndTime;
+        private final Integer humidityValue;
+
+        public HourlyHumidity(ZonedDateTime zonedStartTime, ZonedDateTime zonedEndTime, Integer humidityValue) {
+            this.zonedStartTime = zonedStartTime;
+            this.zonedEndTime = zonedEndTime;
+            this.humidityValue = humidityValue;
+            this.twelveHourStartTime = to12HrFrom24Hr(zonedStartTime.format(
+                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mmXXX")));
+            this.twelveHourEndTime = to12HrFrom24Hr(zonedEndTime.format(
+                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mmXXX")));
+        }
+
+        public ZonedDateTime getZonedStartTime() {
+            return zonedStartTime;
+        }
+
+        public ZonedDateTime getZonedEndTime() {
+            return zonedEndTime;
+        }
+
+        public String getTwelveHourStartTime() {
+            return twelveHourStartTime;
+        }
+
+        public String getTwelveHourEndTime() {
+            return twelveHourEndTime;
+        }
+
+        public Integer getHumidityValue() {
+            return humidityValue;
+        }
+    }
+
+    public static class GetHumidityTrendsResponse {
+        private final List<HourlyHumidity> humidityPeriods;
+        private final Integer totalPeriods;
+        private final String errMsg;
+        private final ShortCode shortCode;
+
+        public GetHumidityTrendsResponse(UserSettings userSettings, List<NWSHourlyPeriod> hourlyPeriods) {
+            this.humidityPeriods = new ArrayList<>();
+            this.totalPeriods = hourlyPeriods.size();
+            this.errMsg = null;
+            this.shortCode = SUCCESS;
+
+            hourlyPeriods.forEach(p -> {
+                p.setZonedStartTime(userSettings.getTimeZone());
+                p.setZonedEndTime(userSettings.getTimeZone());
+
+                this.humidityPeriods.add(
+                    new HourlyHumidity(
+                        p.zonedStartTime,
+                        p.zonedEndTime,
+                        p.getRelativeHumidity().value()
+                    )
+                );
+            });
+        }
+
+        public GetHumidityTrendsResponse(String errMsg, ShortCode shortCode) {
+            this.errMsg = errMsg;
+            this.shortCode = shortCode;
+            this.humidityPeriods = null;
+            this.totalPeriods = null;
+        }
+
+        public List<HourlyHumidity> getHumidityPeriods() {
+            return humidityPeriods;
+        }
+
+        public Integer getTotalPeriods() {
+            return totalPeriods;
+        }
+
+        public String getErrMsg() {
+            return errMsg;
+        }
+
+        public ShortCode getShortCode() {
+            return shortCode;
+        }
+    }
+
+    public GetHumidityTrendsResponse getHumidityTrends(UserSettings userSettings, TrendType trendType) {
+        List<NWSHourlyPeriod> filteredPeriods = getFilteredTimePeriods(trendType, userSettings);
+        return new GetHumidityTrendsResponse(userSettings, filteredPeriods);
+    }
+
+    public static class HourlyTemperature {
+        private final ZonedDateTime zonedStartTime;
+        private final ZonedDateTime zonedEndTime;
+        private final String twelveHourStartTime;
+        private final String twelveHourEndTime;
+        private final Integer temperatureValue;
+
+        public HourlyTemperature(ZonedDateTime zonedStartTime, ZonedDateTime zonedEndTime, Integer temperatureValue) {
+            this.zonedStartTime = zonedStartTime;
+            this.zonedEndTime = zonedEndTime;
+            this.temperatureValue = temperatureValue;
+            this.twelveHourStartTime = to12HrFrom24Hr(zonedStartTime.format(
+                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mmXXX")));
+            this.twelveHourEndTime = to12HrFrom24Hr(zonedEndTime.format(
+                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mmXXX")));
+        }
+
+        public ZonedDateTime getZonedStartTime() {
+            return zonedStartTime;
+        }
+
+        public ZonedDateTime getZonedEndTime() {
+            return zonedEndTime;
+        }
+
+        public String getTwelveHourStartTime() {
+            return twelveHourStartTime;
+        }
+
+        public String getTwelveHourEndTime() {
+            return twelveHourEndTime;
+        }
+
+        public Integer getTemperatureValue() {
+            return temperatureValue;
+        }
+    }
+
+    public static class GetTemperatureTrendsResponse {
+        private final List<HourlyTemperature> temperaturePeriods;
+        private final Integer totalPeriods;
+        private final String errMsg;
+        private final ShortCode shortCode;
+
+        public GetTemperatureTrendsResponse(UserSettings userSettings, List<NWSHourlyPeriod> hourlyPeriods) {
+            this.temperaturePeriods = new ArrayList<>();
+            this.totalPeriods = hourlyPeriods.size();
+            this.errMsg = null;
+            this.shortCode = SUCCESS;
+
+            hourlyPeriods.forEach(p -> {
+                p.setZonedStartTime(userSettings.getTimeZone());
+                p.setZonedEndTime(userSettings.getTimeZone());
+
+                this.temperaturePeriods.add(
+                    new HourlyTemperature(
+                        p.zonedStartTime,
+                        p.zonedEndTime,
+                        p.getTemperatureInt()
+                    )
+                );
+            });
+        }
+
+        public GetTemperatureTrendsResponse(String errMsg, ShortCode shortCode) {
+            this.errMsg = errMsg;
+            this.shortCode = shortCode;
+            this.temperaturePeriods = null;
+            this.totalPeriods = null;
+        }
+
+        public List<HourlyTemperature> getTemperaturePeriods() {
+            return temperaturePeriods;
+        }
+
+        public Integer getTotalPeriods() {
+            return totalPeriods;
+        }
+
+        public String getErrMsg() {
+            return errMsg;
+        }
+
+        public ShortCode getShortCode() {
+            return shortCode;
+        }
+    }
+
+    public GetTemperatureTrendsResponse getTemperatureTrends(UserSettings userSettings, TrendType trendType) {
+        List<NWSHourlyPeriod> filteredPeriods = getFilteredTimePeriods(trendType, userSettings);
+        return new GetTemperatureTrendsResponse(userSettings, filteredPeriods);
+    }
+
+    public static class HourlyFeelsLike {
+        private final ZonedDateTime zonedStartTime;
+        private final ZonedDateTime zonedEndTime;
+        private final String twelveHourStartTime;
+        private final String twelveHourEndTime;
+        private final Integer feelsLikeValue;
+
+        public HourlyFeelsLike(ZonedDateTime zonedStartTime, ZonedDateTime zonedEndTime, Integer feelsLikeValue) {
+            this.zonedStartTime = zonedStartTime;
+            this.zonedEndTime = zonedEndTime;
+            this.feelsLikeValue = feelsLikeValue;
+            this.twelveHourStartTime = to12HrFrom24Hr(zonedStartTime.format(
+                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mmXXX")));
+            this.twelveHourEndTime = to12HrFrom24Hr(zonedEndTime.format(
+                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mmXXX")));
+        }
+
+        public ZonedDateTime getZonedStartTime() {
+            return zonedStartTime;
+        }
+
+        public ZonedDateTime getZonedEndTime() {
+            return zonedEndTime;
+        }
+
+        public String getTwelveHourStartTime() {
+            return twelveHourStartTime;
+        }
+
+        public String getTwelveHourEndTime() {
+            return twelveHourEndTime;
+        }
+
+        public Integer getFeelsLikeValue() {
+            return feelsLikeValue;
+        }
+    }
+
+    public static class GetFeelsLikeTrendsResponse {
+        private final List<HourlyFeelsLike> feelsLikePeriods;
+        private final Integer totalPeriods;
+        private final String errMsg;
+        private final ShortCode shortCode;
+
+        public GetFeelsLikeTrendsResponse(UserSettings userSettings, List<NWSHourlyPeriod> hourlyPeriods) {
+            this.feelsLikePeriods = new ArrayList<>();
+            this.totalPeriods = hourlyPeriods.size();
+            this.errMsg = null;
+            this.shortCode = SUCCESS;
+
+            hourlyPeriods.forEach(p -> {
+                p.setZonedStartTime(userSettings.getTimeZone());
+                p.setZonedEndTime(userSettings.getTimeZone());
+
+                this.feelsLikePeriods.add(
+                    new HourlyFeelsLike(
+                        p.zonedStartTime,
+                        p.zonedEndTime,
+                        p.getFeelsLikeTemp()
+                    )
+                );
+            });
+        }
+
+        public GetFeelsLikeTrendsResponse(String errMsg, ShortCode shortCode) {
+            this.errMsg = errMsg;
+            this.shortCode = shortCode;
+            this.feelsLikePeriods = null;
+            this.totalPeriods = null;
+        }
+
+        public List<HourlyFeelsLike> getFeelsLikePeriods() {
+            return feelsLikePeriods;
+        }
+
+        public Integer getTotalPeriods() {
+            return totalPeriods;
+        }
+
+        public String getErrMsg() {
+            return errMsg;
+        }
+
+        public ShortCode getShortCode() {
+            return shortCode;
+        }
+    }
+
+    public GetFeelsLikeTrendsResponse getFeelsLikeTrends(UserSettings userSettings, TrendType trendType) {
+        List<NWSHourlyPeriod> filteredPeriods = getFilteredTimePeriods(trendType, userSettings);
+        return new GetFeelsLikeTrendsResponse(userSettings, filteredPeriods);
     }
 }
