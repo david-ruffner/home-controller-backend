@@ -9,6 +9,9 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 app:
+  todoist:
+    apiUrl: "https://api.todoist.com"
+
   hashUtil:
     digestType: SHA-256
 #    jwtKey: In secrets

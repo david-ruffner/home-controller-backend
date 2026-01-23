@@ -1,13 +1,14 @@
 package com.davidruffner.homecontrollerbackend.utils;
 
+import com.davidruffner.homecontrollerbackend.entities.UserSettings;
 import com.davidruffner.homecontrollerbackend.enums.ResponseCode;
 import com.davidruffner.homecontrollerbackend.enums.ShortCode;
 import com.davidruffner.homecontrollerbackend.exceptions.ControllerException;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.hibernate.query.range.Range;
 
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZonedDateTime;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
 
 import static com.davidruffner.homecontrollerbackend.enums.ShortCode.SYSTEM_EXCEPTION;
 
@@ -65,5 +66,35 @@ public class Utils {
             throw new ControllerException(String.format("Error while converting to 12HR time: '%s'",
                 ex.getMessage()), ResponseCode.SYSTEM_EXCEPTION, SYSTEM_EXCEPTION.toString());
         }
+    }
+
+    public record ZDTTime(
+        ZonedDateTime zdt,
+        String timestamp
+    ) {}
+
+    private final static DateTimeFormatter LONG_FORMAT = DateTimeFormatter
+        .ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+
+    public static String getTimestampFromZDT(ZonedDateTime zdt) {
+        return zdt.format(LONG_FORMAT);
+    }
+
+    public static ZDTTime getZDTFromTimestamp(String timestamp, UserSettings userSettings) {
+        ZonedDateTime zdt;
+
+        if (timestamp.contains("T")) {
+            // Has time info
+            zdt = LocalDateTime.parse(timestamp)
+                .atZone(ZoneId.of(userSettings.getTimeZone()));
+
+        } else {
+            // Missing time info
+            zdt = LocalDate.parse(timestamp)
+                .atStartOfDay(ZoneId.of(userSettings.getTimeZone()));
+
+        }
+
+        return new ZDTTime(zdt, zdt.format(LONG_FORMAT));
     }
 }

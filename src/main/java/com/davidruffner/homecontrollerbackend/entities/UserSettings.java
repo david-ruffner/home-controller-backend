@@ -12,6 +12,7 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
 import java.util.Map;
+import java.util.Optional;
 
 @Entity
 @Table(name = "user_settings")
@@ -67,6 +68,9 @@ public class UserSettings {
 
     @Column(name = "username", nullable = false)
     private String username;
+
+    @Column(name = "inbox_project_id")
+    private String inboxProjectId;
 
     public String getControlDeviceId() {
         return controlDeviceId;
@@ -196,6 +200,14 @@ public class UserSettings {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public Optional<String> getInboxProjectId() {
+        return Optional.ofNullable(inboxProjectId);
+    }
+
+    public void setInboxProjectId(String inboxProjectId) {
+        this.inboxProjectId = inboxProjectId;
     }
 
     public static UserSettings fromJSONStr(String jsonStr) {
