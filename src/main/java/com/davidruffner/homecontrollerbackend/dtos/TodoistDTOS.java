@@ -1,19 +1,23 @@
 package com.davidruffner.homecontrollerbackend.dtos;
 
 import com.davidruffner.homecontrollerbackend.entities.UserSettings;
-import com.davidruffner.homecontrollerbackend.enums.ResponseCode;
 import com.davidruffner.homecontrollerbackend.enums.ShortCode;
+import com.davidruffner.homecontrollerbackend.enums.TodoistPriority;
 import com.davidruffner.homecontrollerbackend.exceptions.ControllerException;
-import com.davidruffner.homecontrollerbackend.services.TodoistRetriever;
 import com.davidruffner.homecontrollerbackend.services.TodoistRetriever.PostProcessing;
 import com.davidruffner.homecontrollerbackend.services.TodoistRetriever.PostProcessingAction;
 import com.davidruffner.homecontrollerbackend.utils.Utils.ZDTTime;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.format.DateTimeParseException;
+import java.util.*;
 
 import static com.davidruffner.homecontrollerbackend.enums.ResponseCode.BAD_REQUEST;
 import static com.davidruffner.homecontrollerbackend.utils.Utils.getTimestampFromZDT;
@@ -245,7 +249,281 @@ public class TodoistDTOS {
         }
     }
 
+    public static class TodoistRequestFilterOption {
+        private final String filterName;
+        private final Object value;
+        private final Object startValue;
+        private final Object endValue;
+        private final TodoistPriority todoistPriority;
+        private final List<TodoistPriority> todoistPriorities;
+
+        public TodoistRequestFilterOption(
+            @JsonProperty("filterName") String filterName,
+            @JsonProperty("value") Object value,
+            @JsonProperty("startValue") Object startValue,
+            @JsonProperty("endValue") Object endValue,
+            @JsonProperty("priority") String todoistPriorityStr,
+            @JsonProperty("priorities") List<TodoistPriority> todoistPriorities
+        ) {
+            this.filterName = filterName;
+            this.value = value;
+            this.startValue = startValue;
+            this.endValue = endValue;
+
+            if (todoistPriorityStr != null) {
+                this.todoistPriority = TodoistPriority.fromLabel(todoistPriorityStr)
+                    .orElseThrow(() -> new ControllerException(String.format(
+                        "Invalid Todoist Priority Value: '%s'", todoistPriorityStr
+                    ), BAD_REQUEST));
+            } else {
+                this.todoistPriority = null;
+            }
+
+            this.todoistPriorities = todoistPriorities;
+        }
+
+        public String getFilterName() {
+            return filterName;
+        }
+
+        public Object getValue() {
+            return value;
+        }
+
+        public Object getStartValue() {
+            return startValue;
+        }
+
+        public Object getEndValue() {
+            return endValue;
+        }
+
+        public TodoistPriority getTodoistPriority() {
+            return todoistPriority;
+        }
+
+        public List<TodoistPriority> getTodoistPriorities() {
+            return todoistPriorities;
+        }
+    }
+
     public record TodoistRequestOptions(
-         TodoistRequestSortingOptions sortingOptions
+         TodoistRequestSortingOptions sortingOptions,
+         List<TodoistRequestFilterOption> filterOptions
     ) {}
+
+    public record GetTodoistProjectsResults(
+        String id,
+        String name,
+        @JsonProperty("view_style") String viewStyle,
+        String description,
+        @JsonProperty("inbox_project") Boolean inboxProject
+    ){}
+
+    public record GetTodoistProjectsResponse(
+        List<GetTodoistProjectsResults> results
+    ){}
+
+    public record GetTodoistTasksResultDue(
+       String date,
+       String timezone,
+       @JsonProperty("string") String friendlyDate,
+       @JsonProperty("is_recurring") Boolean isRecurring
+    ){}
+
+    public record GetTodoistTasksResultDeadline(
+        String date
+    ){}
+
+    public record GetTodoistTasksResultDuration(
+        Integer amount,
+        String unit
+    ){}
+
+    public static class GetTodoistTasksResult {
+        private String id;
+        private String projectId;
+        private String sectionId;
+        private List<String> labels;
+        private GetTodoistTasksResultDeadline deadline;
+        private GetTodoistTasksResultDuration duration;
+        private Boolean isDeleted;
+        private GetTodoistTasksResultDue due;
+        private Integer priorityIntVal;
+        private TodoistPriority priority;
+        private String content;
+        private String description;
+        private List<GetTodoistTasksResultDue> reminders;
+
+        public GetTodoistTasksResult(String id, String projectId, String sectionId, List<String> labels,
+            GetTodoistTasksResultDeadline deadline, GetTodoistTasksResultDuration duration,
+            @JsonProperty("is_deleted") Boolean isDeleted, GetTodoistTasksResultDue due, Integer priority,
+            String content, String description) {
+
+            this.id = id;
+            this.projectId = projectId;
+            this.sectionId = sectionId;
+            this.labels = labels;
+            this.deadline = deadline;
+            this.duration = duration;
+            this.isDeleted = isDeleted;
+            this.due = due;
+            this.priorityIntVal = priority;
+            this.priority = TodoistPriority.fromIntVal(priority);
+            this.content = content;
+            this.description = description;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public String getProjectId() {
+            return projectId;
+        }
+
+        public String getSectionId() {
+            return sectionId;
+        }
+
+        public List<String> getLabels() {
+            return labels;
+        }
+
+        public GetTodoistTasksResultDeadline getDeadline() {
+            return deadline;
+        }
+
+        public GetTodoistTasksResultDuration getDuration() {
+            return duration;
+        }
+
+        public Boolean getDeleted() {
+            return isDeleted;
+        }
+
+        public GetTodoistTasksResultDue getDue() {
+            return due;
+        }
+
+        @JsonIgnore
+        public Date getDueDate() {
+            if (due == null || due.date() == null) {
+                return null;
+            }
+
+            String dateStr = due.date();
+
+            try {
+                // Date + time
+                LocalDateTime ldt = LocalDateTime.parse(dateStr);
+                return Date.from(
+                    ldt.atZone(ZoneId.systemDefault()).toInstant()
+                );
+            } catch (DateTimeParseException e) {
+                // Date only
+                LocalDate ld = LocalDate.parse(dateStr);
+                return Date.from(
+                    ld.atStartOfDay(ZoneId.systemDefault()).toInstant()
+                );
+            }
+        }
+
+        public Integer getPriorityIntVal() {
+            return priorityIntVal;
+        }
+
+        public TodoistPriority getPriority() {
+            return priority;
+        }
+
+        public String getContent() {
+            return content;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public List<GetTodoistTasksResultDue> getReminders() {
+            return reminders;
+        }
+
+        public void setReminders(List<GetTodoistTasksResultDue> reminders) {
+            this.reminders = reminders;
+        }
+    }
+
+    public record GetTodoistTasksResponse(
+       List<GetTodoistTasksResult> results
+    ){}
+
+    // Returned to the user
+    public record GetTodoistLabel(
+        String name,
+        String colorName,
+        String rgbaString
+    ) {}
+
+    // Returned to the user
+    public record GetTodoistLabelsResponse(
+        List<GetTodoistLabel> labels
+    ) {}
+
+    // Used with the Todoist API
+    public record GetTodoistAPILabel(
+        String name,
+        String color
+    ) {}
+
+    // Used with the Todoist API
+    public record GetTodoistAPILabelsResponse(
+        List<GetTodoistAPILabel> results
+    ) {}
+
+    public record GetTodoistAPIReminder(
+        GetTodoistTasksResultDue due,
+        @JsonProperty("item_id") String itemId
+    ) {}
+
+    public static class GetTodoistAPIReminders {
+        Map<String, List<GetTodoistAPIReminder>> remindersMap = new HashMap<>();
+
+        @JsonCreator
+        public GetTodoistAPIReminders(@JsonProperty("reminders") List<GetTodoistAPIReminder> reminders) {
+            reminders.forEach(r -> {
+                if (!remindersMap.containsKey(r.itemId())) {
+                    List<GetTodoistAPIReminder> newList = new ArrayList<>();
+                    newList.add(r);
+                    remindersMap.put(r.itemId(), newList);
+                } else {
+                    this.remindersMap.get(r.itemId()).add(r);
+                }
+            });
+        }
+
+        public Optional<List<GetTodoistAPIReminder>> getReminderByTaskId(String taskId) {
+            return Optional.ofNullable(this.remindersMap.get(taskId));
+        }
+    }
+
+    public static class GetTodoistAPIRemindersRequest {
+        private final String syncToken;
+        private final List<String> resourceTypes;
+
+        public GetTodoistAPIRemindersRequest() {
+            this.syncToken = "*";
+            this.resourceTypes = List.of("reminders");
+        }
+
+        @JsonProperty("sync_token")
+        public String getSyncToken() {
+            return syncToken;
+        }
+
+        @JsonProperty("resource_types")
+        public List<String> getResourceTypes() {
+            return resourceTypes;
+        }
+    }
 }

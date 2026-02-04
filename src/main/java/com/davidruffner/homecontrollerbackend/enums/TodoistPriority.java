@@ -23,8 +23,19 @@ public enum TodoistPriority {
         entry("none", NONE)
     );
 
+    private static final Map<Integer, TodoistPriority> intValMap = Map.ofEntries(
+        entry(4, HIGH),
+        entry(3, MEDIUM),
+        entry(2, LOW),
+        entry(1, NONE)
+    );
+
     public static Optional<TodoistPriority> fromLabel(String label) {
         return Optional.ofNullable(labelMap.get(label.toLowerCase(Locale.US)));
+    }
+
+    public static TodoistPriority fromIntVal(Integer intVal) {
+        return intValMap.getOrDefault(intVal, null);
     }
 
     TodoistPriority(String label, String filterTerm, Integer intVal) {

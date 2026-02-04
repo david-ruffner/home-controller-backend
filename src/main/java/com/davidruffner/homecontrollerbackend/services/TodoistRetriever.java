@@ -168,7 +168,7 @@ public class TodoistRetriever {
         }
 
         public Builder byTaskId(String taskId) {
-            this.uriBuilder.queryParam("id", taskId);
+            this.uriBuilder.queryParam("ids", taskId);
             return this;
         }
 
