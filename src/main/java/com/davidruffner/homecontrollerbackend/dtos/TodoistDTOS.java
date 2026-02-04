@@ -507,13 +507,13 @@ public class TodoistDTOS {
         }
     }
 
-    public static class GetTodoistAPIRemindersRequest {
+    public static class GetTodoistAPISyncRequest {
         private final String syncToken;
         private final List<String> resourceTypes;
 
-        public GetTodoistAPIRemindersRequest() {
-            this.syncToken = "*";
-            this.resourceTypes = List.of("reminders");
+        public GetTodoistAPISyncRequest(String syncToken, List<String> resourceTypes) {
+            this.syncToken = syncToken; // "*"
+            this.resourceTypes = resourceTypes; // List.of("reminders")
         }
 
         @JsonProperty("sync_token")
@@ -524,6 +524,186 @@ public class TodoistDTOS {
         @JsonProperty("resource_types")
         public List<String> getResourceTypes() {
             return resourceTypes;
+        }
+    }
+
+    public static GetTodoistAPISyncRequest getTodoistAPIRemindersRequest() {
+        return new GetTodoistAPISyncRequest("*", List.of("reminders"));
+    }
+
+    public static GetTodoistAPISyncRequest getTodoistAPIAllRequest() {
+        return new GetTodoistAPISyncRequest("*", List.of("reminders", "items"));
+    }
+
+    public static class GetTodoistSyncTask {
+        private String id;
+        private String projectId;
+        private String sectionId;
+        private String parentId;
+        private List<String> labels;
+        private GetTodoistTasksResultDeadline deadline;
+        private GetTodoistTasksResultDuration duration;
+        private Boolean isDeleted;
+        private GetTodoistTasksResultDue due;
+        private Integer priorityIntVal;
+        private TodoistPriority priority;
+        private String content;
+        private String description;
+        private List<GetTodoistTasksResultDue> reminders = new ArrayList<>();
+        private List<GetTodoistSyncTask> subTasks = new ArrayList<>();
+
+        public GetTodoistSyncTask(
+            String id,
+            @JsonProperty("project_id") String projectId,
+            @JsonProperty("section_id") String sectionId,
+            @JsonProperty("parent_id") String parentId,
+            List<String> labels,
+            GetTodoistTasksResultDeadline deadline,
+            GetTodoistTasksResultDuration duration,
+            @JsonProperty("is_deleted") Boolean isDeleted,
+            GetTodoistTasksResultDue due,
+            @JsonProperty("priority") Integer priorityIntVal,
+            String content,
+            String description,
+            List<GetTodoistTasksResultDue> reminders
+        ) {
+            this.id = id;
+            this.projectId = projectId;
+            this.sectionId = sectionId;
+            this.parentId = parentId;
+            this.labels = labels;
+            this.deadline = deadline;
+            this.duration = duration;
+            this.isDeleted = isDeleted;
+            this.due = due;
+            this.priorityIntVal = priorityIntVal;
+            this.priority = TodoistPriority.fromIntVal(priorityIntVal);
+            this.content = content;
+            this.description = description;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public String getProjectId() {
+            return projectId;
+        }
+
+        public String getSectionId() {
+            return sectionId;
+        }
+
+        public String getParentId() {
+            return parentId;
+        }
+
+        public List<String> getLabels() {
+            return labels;
+        }
+
+        public GetTodoistTasksResultDeadline getDeadline() {
+            return deadline;
+        }
+
+        public GetTodoistTasksResultDuration getDuration() {
+            return duration;
+        }
+
+        public Boolean getDeleted() {
+            return isDeleted;
+        }
+
+        public GetTodoistTasksResultDue getDue() {
+            return due;
+        }
+
+        @JsonProperty("priority_int")
+        public Integer getPriorityIntVal() {
+            return priorityIntVal;
+        }
+
+        @JsonProperty("priority")
+        public TodoistPriority getPriority() {
+            return priority;
+        }
+
+        public String getContent() {
+            return content;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public List<GetTodoistTasksResultDue> getReminders() {
+            return reminders;
+        }
+
+        public void setReminders(List<GetTodoistTasksResultDue> reminders) {
+            this.reminders = reminders;
+        }
+
+        public List<GetTodoistSyncTask> getSubTasks() {
+            return subTasks;
+        }
+
+        public void setSubTasks(List<GetTodoistSyncTask> subTasks) {
+            this.subTasks = subTasks;
+        }
+
+        @JsonIgnore
+        public Date getDueDate() {
+            if (due == null || due.date() == null) {
+                return null;
+            }
+
+            String dateStr = due.date();
+
+            try {
+                // Date + time
+                LocalDateTime ldt = LocalDateTime.parse(dateStr);
+                return Date.from(
+                    ldt.atZone(ZoneId.systemDefault()).toInstant()
+                );
+            } catch (DateTimeParseException e) {
+                // Date only
+                LocalDate ld = LocalDate.parse(dateStr);
+                return Date.from(
+                    ld.atStartOfDay(ZoneId.systemDefault()).toInstant()
+                );
+            }
+        }
+    }
+
+    public static class GetTodoistSyncTasksResponseDTO {
+        private List<GetTodoistSyncTask> items;
+        private Map<String, List<GetTodoistAPIReminder>> remindersMap = new HashMap<>();
+
+        @JsonCreator
+        public GetTodoistSyncTasksResponseDTO(
+            @JsonProperty("items") List<GetTodoistSyncTask> items,
+            @JsonProperty("reminders") List<GetTodoistAPIReminder> reminders
+        ) {
+            this.items = items;
+
+            reminders.forEach(r -> {
+                if (!remindersMap.containsKey(r.itemId())) {
+                    List<GetTodoistAPIReminder> newList = new ArrayList<>();
+                    newList.add(r);
+                    remindersMap.put(r.itemId(), newList);
+                } else {
+                    this.remindersMap.get(r.itemId()).add(r);
+                }
+            });
+        }
+
+        public Optional<List<GetTodoistAPIReminder>> getReminderByTaskId(String taskId) {
+            return Optional.ofNullable(this.remindersMap.get(taskId));
+        }
+
+        public List<GetTodoistSyncTask> getItems() {
+            return items;
         }
     }
 }

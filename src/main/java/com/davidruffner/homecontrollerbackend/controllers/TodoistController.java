@@ -18,6 +18,7 @@ import org.springframework.web.client.RestClient;
 import java.net.URI;
 import java.util.*;
 
+import static com.davidruffner.homecontrollerbackend.dtos.TodoistDTOS.getTodoistAPIAllRequest;
 import static com.davidruffner.homecontrollerbackend.enums.TodoistProduct.FILTERED_TASKS;
 import static com.davidruffner.homecontrollerbackend.enums.TodoistProduct.TASKS;
 import static com.davidruffner.homecontrollerbackend.utils.Utils.getTodoistLabelColorByName;
@@ -79,33 +80,43 @@ public class TodoistController {
     }
 
     @GetMapping("/getTasksByProjectId/{projectId}")
-    public ResponseEntity<List<GetTodoistTasksResult>> getProjectTasksById(@PathVariable("projectId") String projectId,
+    public ResponseEntity<List<GetTodoistSyncTask>> getProjectTasksById(@PathVariable("projectId") String projectId,
         @RequestParam("sortingAction") String sortingAction) {
 
         RestClient todoistRestClient = (RestClient) this.appCtx.getBean("TodoistRestClient");
-        GetTodoistTasksResponse response = todoistRestClient.get()
-            .uri(uriBuilder -> uriBuilder
-                .path("/api/v1/tasks")
-                .queryParam("project_id", projectId)
-                .build())
-            .header("Authorization", this.todoistConfig.getApiKeyAsBearer())
-            .retrieve()
-            .body(GetTodoistTasksResponse.class);
-
-        GetTodoistAPIReminders remindersResponse = todoistRestClient.post()
+        GetTodoistSyncTasksResponseDTO response = todoistRestClient.post()
             .uri("/api/v1/sync")
-            .body(new GetTodoistAPIRemindersRequest())
+            .body(getTodoistAPIAllRequest())
             .header("Authorization", this.todoistConfig.getApiKeyAsBearer())
             .retrieve()
-            .body(GetTodoistAPIReminders.class);
+            .body(GetTodoistSyncTasksResponseDTO.class);
 
-        List<GetTodoistTasksResult> results = response.results()
+        // Filters project tasks by deletion status, project, and parent
+        List<GetTodoistSyncTask> projectTasks = response.getItems()
             .stream()
-            .filter(r -> !r.getDeleted())
+            .filter(r -> !r.getDeleted() && r.getProjectId().equals(projectId) &&
+                r.getParentId() == null)
             .toList();
 
-        results.forEach(r -> {
-            Optional<List<GetTodoistAPIReminder>> remindersList = remindersResponse.getReminderByTaskId(r.getId());
+        Map<String, List<GetTodoistSyncTask>> subTasksMap = new HashMap<>();
+        // Filters subtasks by project ID and non‑null parent
+        response.getItems()
+            .stream()
+            .filter(r -> !r.getDeleted() && r.getProjectId().equals(projectId) &&
+                r.getParentId() != null)
+            .forEach(subTask -> {
+                if (!subTasksMap.containsKey(subTask.getParentId())) {
+                    List<GetTodoistSyncTask> subTasksList = new ArrayList<>();
+                    subTasksList.add(subTask);
+                    subTasksMap.put(subTask.getParentId(), subTasksList);
+                } else {
+                    subTasksMap.get(subTask.getParentId()).add(subTask);
+                }
+            });
+
+        // Augments tasks with reminders and subtasks if present
+        projectTasks.forEach(r -> {
+            Optional<List<GetTodoistAPIReminder>> remindersList = response.getReminderByTaskId(r.getId());
             remindersList.ifPresent(reminders -> r.setReminders(
                     reminders
                         .stream()
@@ -113,27 +124,31 @@ public class TodoistController {
                         .toList()
                 )
             );
+
+            if (subTasksMap.containsKey(r.getId())) {
+                r.setSubTasks(subTasksMap.get(r.getId()));
+            }
         });
 
         // Handle sorting options
         switch (sortingAction) {
             case "alphabetically":
-                results = results.stream()
-                    .sorted(Comparator.comparing(GetTodoistTasksResult::getContent))
+                projectTasks = projectTasks.stream()
+                    .sorted(Comparator.comparing(GetTodoistSyncTask::getContent))
                     .toList();
                 break;
 
             case "due_date":
-                results = results.stream()
+                projectTasks = projectTasks.stream()
                     .sorted(Comparator.comparing(
-                        GetTodoistTasksResult::getDueDate,
+                        GetTodoistSyncTask::getDueDate,
                         Comparator.nullsLast(Comparator.naturalOrder())
                     ))
                     .toList();
                 break;
         }
 
-        return ResponseEntity.ok(results);
+        return ResponseEntity.ok(projectTasks);
     }
 
     @PostMapping("/getLabels")
