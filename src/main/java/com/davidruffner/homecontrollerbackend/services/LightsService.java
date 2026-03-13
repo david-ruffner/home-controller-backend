@@ -3,6 +3,7 @@ package com.davidruffner.homecontrollerbackend.services;
 import com.davidruffner.homecontrollerbackend.HueGroupResponseDto.GetBulbsForGroupResponse;
 import com.davidruffner.homecontrollerbackend.HueGroupResponseDto.HueGroupResponse;
 import com.davidruffner.homecontrollerbackend.entities.*;
+import com.davidruffner.homecontrollerbackend.repositories.FavoriteColorRepository;
 import com.davidruffner.homecontrollerbackend.repositories.LightBulbTrackRepository;
 import com.davidruffner.homecontrollerbackend.services.ColorConversionService.RgbToXyDto;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,9 @@ public class LightsService {
 
     @Autowired
     LightBulbTrackRepository lightBulbTrackRepo;
+
+    @Autowired
+    FavoriteColorRepository favoriteColorRepo;
 
     public record ServiceDto(
         String rid,
@@ -123,6 +127,7 @@ public class LightsService {
                     lightBulb.setLightStatus(light.on().on());
                     lightBulb.setColor(color);
                     lightBulb.setBrightness(light.dimming().brightness());
+                    lightBulb.setFavoriteColors(this.favoriteColorRepo.getColorsByLightId(lightId));
 
                     LightBulbTrack track = new LightBulbTrack();
                     track.setLightId(lightId);
@@ -187,6 +192,7 @@ public class LightsService {
             .body(HueRoomResponse.class);
 
         response.data().forEach(room -> {
+            // Populates existing room or creates new room with lightbulbs and group ID
             if (mappedLightBulbs.containsKey(room.id())) {
                 HueRoom hueRoom = mappedLightBulbs.get(room.id());
 

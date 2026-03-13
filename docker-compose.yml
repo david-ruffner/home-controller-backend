@@ -11,6 +11,15 @@ services:
       - ./target/home-controller-backend-0.0.1-SNAPSHOT.jar:/app/app.jar
     command: [ "java", "-jar", "/app/app.jar" ]
 
+  redis:
+    image: redis:7
+    container_name: home-controls-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - home-control-redis-data:/data
+    command: [ "redis-server", "--appendonly", "yes" ]
+
   mysql:
     build:
       context: .docker/

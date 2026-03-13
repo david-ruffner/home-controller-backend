@@ -33,6 +33,10 @@ public class FavoriteColor {
         this.favoriteColorId = UUID.randomUUID().toString();
     }
 
+    public FavoriteColor(String favoriteColorId) {
+        this.favoriteColorId = favoriteColorId;
+    }
+
     public String getFavoriteColorId() {
         return favoriteColorId;
     }

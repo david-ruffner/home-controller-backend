@@ -1,25 +1,28 @@
 package com.davidruffner.homecontrollerbackend.dtos;
 
 import com.davidruffner.homecontrollerbackend.entities.UserSettings;
+import com.davidruffner.homecontrollerbackend.enums.ResponseCode;
 import com.davidruffner.homecontrollerbackend.enums.ShortCode;
 import com.davidruffner.homecontrollerbackend.enums.TodoistPriority;
 import com.davidruffner.homecontrollerbackend.exceptions.ControllerException;
 import com.davidruffner.homecontrollerbackend.services.TodoistRetriever.PostProcessing;
 import com.davidruffner.homecontrollerbackend.services.TodoistRetriever.PostProcessingAction;
 import com.davidruffner.homecontrollerbackend.utils.Utils.ZDTTime;
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.fasterxml.jackson.annotation.*;
+import jakarta.annotation.Nullable;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.davidruffner.homecontrollerbackend.enums.ResponseCode.BAD_REQUEST;
+import static com.davidruffner.homecontrollerbackend.enums.ResponseCode.SYSTEM_EXCEPTION;
 import static com.davidruffner.homecontrollerbackend.utils.Utils.getTimestampFromZDT;
 import static com.davidruffner.homecontrollerbackend.utils.Utils.getZDTFromTimestamp;
 
@@ -324,6 +327,7 @@ public class TodoistDTOS {
         List<GetTodoistProjectsResults> results
     ){}
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record GetTodoistTasksResultDue(
        String date,
        String timezone,
@@ -331,9 +335,34 @@ public class TodoistDTOS {
        @JsonProperty("is_recurring") Boolean isRecurring
     ){}
 
-    public record GetTodoistTasksResultDeadline(
-        String date
-    ){}
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class GetTodoistTasksResultDeadline {
+        private final String friendlyMonthAndDay;
+        private final String friendlyYear;
+
+        public GetTodoistTasksResultDeadline(@JsonProperty("date") String date) {
+            LocalDate ld = LocalDate.parse(date);
+            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("MMM d yyyy", Locale.ENGLISH);
+            Pattern pattern = Pattern.compile("(\\w+\\s\\d+)\\s(.*)");
+            Matcher matcher = pattern.matcher(ld.format(dtf));
+
+            if (matcher.matches()) {
+                this.friendlyMonthAndDay = matcher.group(1);
+                this.friendlyYear = matcher.group(2);
+            } else {
+                this.friendlyMonthAndDay = null;
+                this.friendlyYear = null;
+            }
+        }
+
+        public String getFriendlyMonthAndDay() {
+            return friendlyMonthAndDay;
+        }
+
+        public String getFriendlyYear() {
+            return friendlyYear;
+        }
+    }
 
     public record GetTodoistTasksResultDuration(
         Integer amount,
@@ -433,8 +462,8 @@ public class TodoistDTOS {
             return priorityIntVal;
         }
 
-        public TodoistPriority getPriority() {
-            return priority;
+        public String getPriority() {
+            return priority.getLabel();
         }
 
         public String getContent() {
@@ -481,6 +510,7 @@ public class TodoistDTOS {
         List<GetTodoistAPILabel> results
     ) {}
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record GetTodoistAPIReminder(
         GetTodoistTasksResultDue due,
         @JsonProperty("item_id") String itemId
@@ -535,6 +565,206 @@ public class TodoistDTOS {
         return new GetTodoistAPISyncRequest("*", List.of("reminders", "items"));
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class GetTodoistTaskCachedDeadlineDTO {
+        private final String friendlyYear;
+        private final String friendlyMonthAndDay;
+
+        @JsonCreator
+        public GetTodoistTaskCachedDeadlineDTO(
+            @JsonProperty("friendlyYear") String friendlyYear,
+            @JsonProperty("friendlyMonthAndDay") String friendlyMonthAndDay
+        ) {
+            this.friendlyYear = friendlyYear;
+            this.friendlyMonthAndDay = friendlyMonthAndDay;
+        }
+
+        public GetTodoistTaskCachedDeadlineDTO(GetTodoistTasksResultDeadline resultDeadline) {
+            this.friendlyYear = resultDeadline != null ? resultDeadline.getFriendlyYear() : null;
+            this.friendlyMonthAndDay = resultDeadline != null ? resultDeadline.getFriendlyMonthAndDay() : null;
+        }
+
+        public String getFriendlyYear() {
+            return friendlyYear;
+        }
+
+        public String getFriendlyMonthAndDay() {
+            return friendlyMonthAndDay;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class GetTodoistTaskCachedDurationDTO {
+        private final Integer amount;
+        private final String unit;
+
+        @JsonCreator
+        public GetTodoistTaskCachedDurationDTO(
+            @JsonProperty("amount") Integer amount,
+            @JsonProperty("unit") String unit
+        ) {
+            this.amount = amount;
+            this.unit = unit;
+        }
+
+        public GetTodoistTaskCachedDurationDTO(GetTodoistTasksResultDuration resultDuration) {
+            this.amount = resultDuration != null ? resultDuration.amount() : null;
+            this.unit = resultDuration != null ? resultDuration.unit() : null;
+        }
+
+        public Integer getAmount() {
+            return amount;
+        }
+
+        public String getUnit() {
+            return unit;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class GetTodoistTaskCachedDueDTO {
+        private final String date;
+        private final Boolean isRecurring;
+        private final String friendlyString;
+
+        @JsonCreator
+        public GetTodoistTaskCachedDueDTO(
+            @JsonProperty("date") String date,
+            @JsonProperty("is_recurring") Boolean isRecurring,
+            @JsonProperty("string") String friendlyString
+        ) {
+            this.date = date;
+            this.isRecurring = isRecurring;
+            this.friendlyString = friendlyString;
+        }
+
+        public GetTodoistTaskCachedDueDTO (GetTodoistTasksResultDue resultDue) {
+            this.date = resultDue != null ? resultDue.date() : null;
+            this.isRecurring = resultDue != null ? resultDue.isRecurring() : null;
+            this.friendlyString = resultDue != null ? resultDue.friendlyDate() : null;
+        }
+
+        public String getDate() {
+            return date;
+        }
+
+        public Boolean getRecurring() {
+            return isRecurring;
+        }
+
+        public String getFriendlyString() {
+            return friendlyString;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class GetTodoistTaskCachedDTO {
+        private final String id;
+        private final String projectId;
+        private final String sectionId;
+        private final String parentId;
+        private final List<String> labels;
+        private final GetTodoistTaskCachedDeadlineDTO deadline;
+        private final GetTodoistTaskCachedDurationDTO duration;
+        private final Boolean isDeleted;
+        private final GetTodoistTaskCachedDueDTO due;
+        private final String priority;
+        private final String content;
+        private final String description;
+        private final List<GetTodoistTaskCachedDueDTO> reminders;
+
+        @JsonCreator
+        public GetTodoistTaskCachedDTO(
+            @JsonProperty("id") String id,
+            @JsonProperty("project_id") String projectId,
+            @JsonProperty("section_id") String sectionId,
+            @JsonProperty("parent_id") String parentId,
+            @JsonProperty("labels") List<String> labels,
+            @JsonProperty("deadline") GetTodoistTaskCachedDeadlineDTO deadline,
+            @JsonProperty("duration") GetTodoistTaskCachedDurationDTO duration,
+            @JsonProperty("is_deleted") Boolean isDeleted,
+            @JsonProperty("due") GetTodoistTaskCachedDueDTO due,
+            @JsonProperty("priority") String priority,
+            @JsonProperty("content") String content,
+            @JsonProperty("description") String description,
+            @JsonProperty("reminders") List<GetTodoistTaskCachedDueDTO> reminders
+//            @JsonProperty("reminders") List<GetTodoistTasksResultDue> reminders
+        ) {
+            this.id = id;
+            this.projectId = projectId;
+            this.sectionId = sectionId;
+            this.parentId = parentId;
+            this.labels = labels;
+            this.deadline = deadline;
+            this.duration = duration;
+            this.isDeleted = isDeleted;
+            this.due = due;
+            this.priority = priority;
+            this.content = content;
+            this.description = description;
+//            this.reminders = new ArrayList<>();
+
+            this.reminders = reminders;
+
+//            if (reminders != null) {
+//                reminders.forEach(r -> this.reminders.add(new GetTodoistTaskCachedDueDTO(r)));
+//            }
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public String getProjectId() {
+            return projectId;
+        }
+
+        public String getSectionId() {
+            return sectionId;
+        }
+
+        public String getParentId() {
+            return parentId;
+        }
+
+        public List<String> getLabels() {
+            return labels;
+        }
+
+        public GetTodoistTaskCachedDeadlineDTO getDeadline() {
+            return deadline;
+        }
+
+        public GetTodoistTaskCachedDurationDTO getDuration() {
+            return duration;
+        }
+
+        public Boolean getDeleted() {
+            return isDeleted;
+        }
+
+        public GetTodoistTaskCachedDueDTO getDue() {
+            return due;
+        }
+
+        public String getPriority() {
+            return priority;
+        }
+
+        public String getContent() {
+            return content;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public List<GetTodoistTaskCachedDueDTO> getReminders() {
+            return reminders;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class GetTodoistSyncTask {
         private String id;
         private String projectId;
@@ -552,20 +782,21 @@ public class TodoistDTOS {
         private List<GetTodoistTasksResultDue> reminders = new ArrayList<>();
         private List<GetTodoistSyncTask> subTasks = new ArrayList<>();
 
+        @JsonCreator
         public GetTodoistSyncTask(
-            String id,
+            @JsonProperty("id") String id,
             @JsonProperty("project_id") String projectId,
             @JsonProperty("section_id") String sectionId,
             @JsonProperty("parent_id") String parentId,
-            List<String> labels,
-            GetTodoistTasksResultDeadline deadline,
-            GetTodoistTasksResultDuration duration,
+            @JsonProperty("labels") List<String> labels,
+            @JsonProperty("deadline") GetTodoistTasksResultDeadline deadline,
+            @JsonProperty("duration") GetTodoistTasksResultDuration duration,
             @JsonProperty("is_deleted") Boolean isDeleted,
-            GetTodoistTasksResultDue due,
+            @JsonProperty("due") GetTodoistTasksResultDue due,
             @JsonProperty("priority") Integer priorityIntVal,
-            String content,
-            String description,
-            List<GetTodoistTasksResultDue> reminders
+            @JsonProperty("content") String content,
+            @JsonProperty("description") String description,
+            @JsonProperty("reminders") List<GetTodoistTasksResultDue> reminders
         ) {
             this.id = id;
             this.projectId = projectId;
@@ -577,7 +808,9 @@ public class TodoistDTOS {
             this.isDeleted = isDeleted;
             this.due = due;
             this.priorityIntVal = priorityIntVal;
+
             this.priority = TodoistPriority.fromIntVal(priorityIntVal);
+
             this.content = content;
             this.description = description;
         }
@@ -624,8 +857,8 @@ public class TodoistDTOS {
         }
 
         @JsonProperty("priority")
-        public TodoistPriority getPriority() {
-            return priority;
+        public String getPriority() {
+            return priority.getLabel();
         }
 
         public String getContent() {
@@ -676,26 +909,32 @@ public class TodoistDTOS {
         }
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class GetTodoistSyncTasksResponseDTO {
+        private List<GetTodoistSyncTask> results;
         private List<GetTodoistSyncTask> items;
         private Map<String, List<GetTodoistAPIReminder>> remindersMap = new HashMap<>();
 
         @JsonCreator
         public GetTodoistSyncTasksResponseDTO(
-            @JsonProperty("items") List<GetTodoistSyncTask> items,
-            @JsonProperty("reminders") List<GetTodoistAPIReminder> reminders
+            @Nullable @JsonProperty("results") List<GetTodoistSyncTask> results,
+            @Nullable @JsonProperty("items") List<GetTodoistSyncTask> items,
+            @Nullable @JsonProperty("reminders") List<GetTodoistAPIReminder> reminders
         ) {
+            this.results = results;
             this.items = items;
 
-            reminders.forEach(r -> {
-                if (!remindersMap.containsKey(r.itemId())) {
-                    List<GetTodoistAPIReminder> newList = new ArrayList<>();
-                    newList.add(r);
-                    remindersMap.put(r.itemId(), newList);
-                } else {
-                    this.remindersMap.get(r.itemId()).add(r);
-                }
-            });
+            if (reminders != null) {
+                reminders.forEach(r -> {
+                    if (!remindersMap.containsKey(r.itemId())) {
+                        List<GetTodoistAPIReminder> newList = new ArrayList<>();
+                        newList.add(r);
+                        remindersMap.put(r.itemId(), newList);
+                    } else {
+                        this.remindersMap.get(r.itemId()).add(r);
+                    }
+                });
+            }
         }
 
         public Optional<List<GetTodoistAPIReminder>> getReminderByTaskId(String taskId) {
@@ -705,5 +944,20 @@ public class TodoistDTOS {
         public List<GetTodoistSyncTask> getItems() {
             return items;
         }
+
+        public List<GetTodoistSyncTask> getResults() {
+            return results;
+        }
     }
+
+    public record TodoistPaginatedTasksResponseDTO(
+        List<String> partitionKeys,
+        List<GetTodoistTaskCachedDTO> tasks,
+        ShortCode shortCode
+    ) {}
+
+    public record GetPaginatedTasksRequestDTO(
+        String paginationToken,
+        List<String> partitionKeys
+    ) {}
 }

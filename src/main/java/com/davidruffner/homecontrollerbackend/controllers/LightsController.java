@@ -4,19 +4,20 @@ import com.davidruffner.homecontrollerbackend.HueGroupResponseDto;
 import com.davidruffner.homecontrollerbackend.HueGroupResponseDto.GetBulbsForGroupResponse;
 import com.davidruffner.homecontrollerbackend.entities.*;
 import com.davidruffner.homecontrollerbackend.entities.ModifyLightRequest.ModifyLightRequestDTO;
+import com.davidruffner.homecontrollerbackend.repositories.FavoriteColorRepository;
 import com.davidruffner.homecontrollerbackend.repositories.LightBulbTrackRepository;
 import com.davidruffner.homecontrollerbackend.services.ColorConversionService;
 import com.davidruffner.homecontrollerbackend.services.ColorConversionService.RgbToXyDto;
 import com.davidruffner.homecontrollerbackend.services.LightsService;
+import jakarta.annotation.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+
+import static com.davidruffner.homecontrollerbackend.utils.Utils.strNotEmpty;
 
 @RestController
 @RequestMapping("/lights")
@@ -31,10 +32,30 @@ public class LightsController {
     @Autowired
     LightBulbTrackRepository lightBulbTrackRepo;
 
+    @Autowired
+    FavoriteColorRepository favoriteColorRepo;
+
 
     @GetMapping("/getRooms")
     public ResponseEntity<Map<String, HueRoom>> getRooms() {
         return ResponseEntity.ok(this.lightsService.getLightBulbsMappedByRoom());
+    }
+
+    /**
+     * Retrieves room by ID or returns bad request if absent
+     */
+    @GetMapping("/getRoom/{roomId}")
+    public ResponseEntity<HueRoom> getRoom(@PathVariable String roomId) {
+        if (!this.lightsService.getLightBulbsMappedByRoom().containsKey(roomId)) {
+            return ResponseEntity.badRequest()
+                .build();
+        }
+
+        HueRoom hueRoom = this.lightsService.getLightBulbsMappedByRoom().get(roomId);
+        List<FavoriteColor> favoriteColors = this.favoriteColorRepo.getColorsByGroupId(hueRoom.getGroupToggleId());
+        hueRoom.setFavoriteColors(favoriteColors);
+
+        return ResponseEntity.ok(hueRoom);
     }
 
     @GetMapping("/getBulbs")
@@ -120,5 +141,34 @@ public class LightsController {
         ResponseEntity<GetBulbsForGroupResponse> response = this.lightsService.getBulbsForGroup(groupId);
 
         return response;
+    }
+
+    public record UpdateFavoriteColorsRequest(
+        String controlDeviceId,
+        String groupId,
+        String lightId,
+        String colorString,
+        String favoriteColorId
+    ) {}
+
+    @PostMapping("/updateFavoriteColors")
+    public ResponseEntity<Void> updateFavoriteColors(@RequestBody UpdateFavoriteColorsRequest body) {
+        if (strNotEmpty(body.favoriteColorId())) {
+            if (this.favoriteColorRepo.findById(body.favoriteColorId()).isPresent()) {
+                this.favoriteColorRepo.updateFavoriteColorByFavoriteColorId(body.colorString(),
+                    body.favoriteColorId());
+            } else {
+                FavoriteColor newFavColor = new FavoriteColor(body.favoriteColorId());
+                newFavColor.setControlDeviceId(body.controlDeviceId());
+                newFavColor.setGroupId(body.groupId());
+                newFavColor.setLightId(body.lightId());
+                newFavColor.setColorFromRGB(new RGB(body.colorString()));
+                newFavColor.setIndex(1);
+
+                this.favoriteColorRepo.save(newFavColor);
+            }
+        }
+
+        return ResponseEntity.ok().build();
     }
 }

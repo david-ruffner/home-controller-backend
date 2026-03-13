@@ -9,6 +9,7 @@ import org.hibernate.query.range.Range;
 
 import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.Map;
 
 import static com.davidruffner.homecontrollerbackend.enums.ShortCode.SYSTEM_EXCEPTION;
@@ -41,6 +42,17 @@ public class Utils {
             .plusNanos(999);
 
         return new ZonedRange(start, end);
+    }
+
+    public static Date parseYyyyMmDdToDate(String yyyymmdd, String zoneId) {
+        LocalDate ld = LocalDate.parse(yyyymmdd, DateTimeFormatter.BASIC_ISO_DATE); // yyyyMMdd
+        ZonedDateTime zdt = ld.atStartOfDay(ZoneId.of(zoneId));
+        return Date.from(zdt.toInstant());
+    }
+
+    public static Date parseIsoDateToDate(String yyyyMmDd, String zoneId) {
+        LocalDate ld = LocalDate.parse(yyyyMmDd, DateTimeFormatter.ISO_LOCAL_DATE); // yyyy-MM-dd
+        return Date.from(ld.atStartOfDay(ZoneId.of(zoneId)).toInstant());
     }
 
     // OffsetDateTime.parse("2026-01-13T06:00:00-05:00").toLocalDateTime()

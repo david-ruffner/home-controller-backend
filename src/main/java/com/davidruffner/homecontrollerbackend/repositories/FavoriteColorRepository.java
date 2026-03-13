@@ -18,13 +18,13 @@ public interface FavoriteColorRepository extends JpaRepository<FavoriteColor, St
         select c from FavoriteColor c
         where c.groupId = :groupId
     """)
-    public Optional<FavoriteColor> getColorByGroupId(@Param("groupId") String groupId);
+    public List<FavoriteColor> getColorsByGroupId(@Param("groupId") String groupId);
 
     @Query("""
         select c from FavoriteColor c
         where c.lightId = :lightId
     """)
-    public Optional<FavoriteColor> getColorByLightId(@Param("lightId") String lightId);
+    public List<FavoriteColor> getColorsByLightId(@Param("lightId") String lightId);
 
     @Query("""
         select c from FavoriteColor c
@@ -49,4 +49,14 @@ public interface FavoriteColorRepository extends JpaRepository<FavoriteColor, St
         where c.index = :indexNum
     """)
     public void deleteByIndexNum(@Param("indexNum") Integer indexNum);
+
+    @Modifying
+    @Transactional
+    @Query("""
+        update FavoriteColor fc
+            set fc.color = :newColor
+        where fc.favoriteColorId = :favoriteColorId
+    """)
+    void updateFavoriteColorByFavoriteColorId(@Param("newColor") String newColor,
+        @Param("favoriteColorId") String favoriteColorId);
 }

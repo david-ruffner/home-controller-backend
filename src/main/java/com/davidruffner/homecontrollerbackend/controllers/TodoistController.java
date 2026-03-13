@@ -6,17 +6,19 @@ import com.davidruffner.homecontrollerbackend.dispatchers.TodoistRetrieverBuilde
 import com.davidruffner.homecontrollerbackend.dtos.TodoistDTOS;
 import com.davidruffner.homecontrollerbackend.dtos.TodoistDTOS.*;
 import com.davidruffner.homecontrollerbackend.entities.UserSettings;
+import com.davidruffner.homecontrollerbackend.enums.ShortCode;
+import com.davidruffner.homecontrollerbackend.services.TodoistPaginationService;
 import com.davidruffner.homecontrollerbackend.services.TodoistRetriever;
-import com.davidruffner.homecontrollerbackend.utils.Utils;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
-import org.springframework.data.relational.core.mapping.Embedded;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
 
-import java.net.URI;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.davidruffner.homecontrollerbackend.dtos.TodoistDTOS.getTodoistAPIAllRequest;
 import static com.davidruffner.homecontrollerbackend.enums.TodoistProduct.FILTERED_TASKS;
@@ -36,6 +38,9 @@ public class TodoistController {
     @Autowired
     TodoistConfig todoistConfig;
 
+    @Autowired
+    TodoistPaginationService todoistPaginationService;
+
     @GetMapping("/getProjects")
     public ResponseEntity<List<GetTodoistProjectsResults>> getProjects() {
         RestClient todoistRestClient = (RestClient) this.appCtx.getBean("TodoistRestClient");
@@ -50,7 +55,10 @@ public class TodoistController {
             .stream()
             .filter(r -> r.viewStyle().equals("list"))
             .sorted(Comparator.comparing(GetTodoistProjectsResults::name))
-            .toList();
+            .collect(Collectors.toList());
+
+        filteredResults.addFirst(new GetTodoistProjectsResults("upcoming", "Upcoming", "list", null, false));
+        filteredResults.addFirst(new GetTodoistProjectsResults("today", "Today", "list", null, false));
 
         return ResponseEntity.ok(filteredResults);
     }
@@ -79,28 +87,82 @@ public class TodoistController {
         }
     }
 
+    @GetMapping("/getPaginatedTasks/{paginationToken}")
+    public ResponseEntity<TodoistPaginatedTasksResponseDTO> getPaginatedTasks(
+        @PathVariable("paginationToken") String paginationToken
+    ) {
+        return ResponseEntity.ok(this.todoistPaginationService.retrieveTasks(paginationToken));
+    }
+
     @GetMapping("/getTasksByProjectId/{projectId}")
-    public ResponseEntity<List<GetTodoistSyncTask>> getProjectTasksById(@PathVariable("projectId") String projectId,
-        @RequestParam("sortingAction") String sortingAction) {
+    public ResponseEntity<TodoistPaginatedTasksResponseDTO> getProjectTasksById(
+        @PathVariable("projectId") String projectId,
+        @RequestParam("sortingAction") String sortingAction
+    ) throws JsonProcessingException {
 
         RestClient todoistRestClient = (RestClient) this.appCtx.getBean("TodoistRestClient");
-        GetTodoistSyncTasksResponseDTO response = todoistRestClient.post()
-            .uri("/api/v1/sync")
-            .body(getTodoistAPIAllRequest())
-            .header("Authorization", this.todoistConfig.getApiKeyAsBearer())
-            .retrieve()
-            .body(GetTodoistSyncTasksResponseDTO.class);
+        List<GetTodoistSyncTask> projectTasks;
+        GetTodoistSyncTasksResponseDTO response;
 
-        // Filters project tasks by deletion status, project, and parent
-        List<GetTodoistSyncTask> projectTasks = response.getItems()
-            .stream()
-            .filter(r -> !r.getDeleted() && r.getProjectId().equals(projectId) &&
-                r.getParentId() == null)
-            .toList();
+        switch (projectId) {
+            case "upcoming":
+                response = todoistRestClient.get()
+                    .uri(UriComponentsBuilder
+                        .fromPath("/api/v1/tasks/filter")
+                        .queryParam("query", "7 days")
+                        .build()
+                        .toUri())
+                    .header("Authorization", this.todoistConfig.getApiKeyAsBearer())
+                    .retrieve()
+                    .body(GetTodoistSyncTasksResponseDTO.class);
+
+                projectTasks = response.getResults()
+                    .stream()
+                    .filter(r -> !r.getDeleted() && r.getParentId() == null)
+                    .toList();
+                break;
+
+            case "today":
+                response = todoistRestClient.get()
+                    .uri(UriComponentsBuilder
+                        .fromPath("/api/v1/tasks/filter")
+                        .queryParam("query", "today")
+                        .build()
+                        .toUri())
+                    .header("Authorization", this.todoistConfig.getApiKeyAsBearer())
+                    .retrieve()
+                    .body(GetTodoistSyncTasksResponseDTO.class);
+
+                projectTasks = response.getResults()
+                    .stream()
+                    .filter(r -> !r.getDeleted() && r.getParentId() == null)
+                    .toList();
+                break;
+
+            default:
+                ResponseEntity<String> rawResponse = todoistRestClient.post()
+                    .uri("/api/v1/sync")
+                    .body(getTodoistAPIAllRequest())
+                    .header("Authorization", this.todoistConfig.getApiKeyAsBearer())
+                    .retrieve()
+                    .toEntity(String.class);
+
+                String rawBody = rawResponse.getBody();
+                response = new com.fasterxml.jackson.databind.ObjectMapper()
+                        .readValue(rawBody, GetTodoistSyncTasksResponseDTO.class);
+
+                // Filters project tasks by deletion status, project, and parent
+                projectTasks = response.getItems()
+                    .stream()
+                    .filter(r -> !r.getDeleted() && r.getProjectId().equals(projectId) &&
+                        r.getParentId() == null)
+                    .toList();
+                break;
+        }
 
         Map<String, List<GetTodoistSyncTask>> subTasksMap = new HashMap<>();
         // Filters subtasks by project ID and non‑null parent
-        response.getItems()
+        projectTasks
             .stream()
             .filter(r -> !r.getDeleted() && r.getProjectId().equals(projectId) &&
                 r.getParentId() != null)
@@ -148,7 +210,16 @@ public class TodoistController {
                 break;
         }
 
-        return ResponseEntity.ok(projectTasks);
+        if (!projectTasks.isEmpty()) {
+            List<String> partitionKeys = this.todoistPaginationService.cacheTasks(
+                projectTasks, 10);
+            TodoistPaginatedTasksResponseDTO tasksResponse = this.todoistPaginationService.retrieveTasks(
+                partitionKeys.get(0), partitionKeys);
+
+            return ResponseEntity.ok(tasksResponse);
+        } else {
+            return ResponseEntity.ok(new TodoistPaginatedTasksResponseDTO(null, null, ShortCode.NO_TASKS));
+        }
     }
 
     @PostMapping("/getLabels")

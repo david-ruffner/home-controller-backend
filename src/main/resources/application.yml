@@ -8,6 +8,11 @@ spring:
     url: jdbc:mysql://localhost:3306/homecontrols
     driver-class-name: com.mysql.cj.jdbc.Driver
 
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
 app:
   todoist:
     apiUrl: "https://api.todoist.com"
@@ -41,3 +46,9 @@ app:
         - reminders
         - userSettings
         - deviceSettings
+
+logging:
+  level:
+    com:
+      fasterxml:
+        jackson: DEBUG # TODO: Remove
