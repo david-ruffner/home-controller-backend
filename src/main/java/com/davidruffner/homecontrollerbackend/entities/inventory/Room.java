@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "room")
@@ -18,12 +19,16 @@ public class Room {
     @OneToMany(mappedBy = "room", fetch = FetchType.LAZY)
     private List<Item> items = new ArrayList<>();
 
-    public String getRoomId() {
-        return roomId;
+    public Room() {
+        this.roomId = UUID.randomUUID().toString();
     }
 
-    public void setRoomId(String roomId) {
+    public Room(String roomId) {
         this.roomId = roomId;
+    }
+
+    public String getRoomId() {
+        return roomId;
     }
 
     public List<Item> getItems() {

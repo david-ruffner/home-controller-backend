@@ -2,6 +2,8 @@ package com.davidruffner.homecontrollerbackend.entities.inventory;
 
 import jakarta.persistence.*;
 
+import java.util.UUID;
+
 @Entity
 @Table(name = "item")
 public class Item {
@@ -29,12 +31,16 @@ public class Item {
     @Column(name = "UPC", nullable = false)
     private String upc;
 
-    public String getItemId() {
-        return itemId;
+    public Item() {
+        this.itemId = UUID.randomUUID().toString();
     }
 
-    public void setItemId(String itemId) {
+    public Item(String itemId) {
         this.itemId = itemId;
+    }
+
+    public String getItemId() {
+        return itemId;
     }
 
     public String getItemName() {

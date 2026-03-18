@@ -13,7 +13,10 @@ public enum ShortCode {
     SUCCESS("SUCCESS"),
     INVALID_TREND_TYPE("INVALID_TREND_TYPE"),
     PAGINATION_EXPIRED("PAGINATION_EXPIRED"),
-    NO_TASKS("NO_TASKS");
+    NO_TASKS("NO_TASKS"),
+    BAD_REQUEST("BAD_REQUEST"),
+    NO_ROOM_ITEMS("NO_ROOM_ITEMS"),
+    NO_ROOMS("NO_ROOMS");
 
     private final String name;
 
