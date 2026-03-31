@@ -31,6 +31,10 @@ public class Item {
     @Column(name = "UPC", nullable = false)
     private String upc;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "container_id")
+    private ItemContainer itemContainer;
+
     public Item() {
         this.itemId = UUID.randomUUID().toString();
     }
@@ -89,5 +93,13 @@ public class Item {
 
     public void setUpc(String upc) {
         this.upc = upc;
+    }
+
+    public ItemContainer getItemContainer() {
+        return itemContainer;
+    }
+
+    public void setItemContainer(ItemContainer itemContainer) {
+        this.itemContainer = itemContainer;
     }
 }

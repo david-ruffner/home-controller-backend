@@ -1,9 +1,15 @@
 package com.davidruffner.homecontrollerbackend.controllers;
 
+import com.davidruffner.homecontrollerbackend.dtos.InventoryDTO;
+import com.davidruffner.homecontrollerbackend.dtos.InventoryDTO.GetAllContainersByRoomResponse;
+import com.davidruffner.homecontrollerbackend.dtos.InventoryDTO.GetAllItemsByContainerResponse;
 import com.davidruffner.homecontrollerbackend.dtos.InventoryDTO.GetAllItemsByRoomResponse;
 import com.davidruffner.homecontrollerbackend.dtos.InventoryDTO.GetAllRoomsResponse;
+import com.davidruffner.homecontrollerbackend.entities.inventory.Item;
+import com.davidruffner.homecontrollerbackend.entities.inventory.ItemContainer;
 import com.davidruffner.homecontrollerbackend.entities.inventory.Room;
 import com.davidruffner.homecontrollerbackend.repositories.inventory.CategoryRepository;
+import com.davidruffner.homecontrollerbackend.repositories.inventory.ItemContainerRepository;
 import com.davidruffner.homecontrollerbackend.repositories.inventory.ItemRepository;
 import com.davidruffner.homecontrollerbackend.repositories.inventory.RoomRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +38,9 @@ public class InventoryController {
     @Autowired
     RoomRepository roomRepo;
 
+    @Autowired
+    ItemContainerRepository itemContainerRepo;
+
     @GetMapping("/getAllRooms")
     public ResponseEntity<GetAllRoomsResponse> getAllRooms() {
         List<Room> rooms = this.roomRepo.fetchAllRooms();
@@ -47,14 +56,33 @@ public class InventoryController {
     public ResponseEntity<GetAllItemsByRoomResponse> getAllItemsByRoom(@PathVariable String roomId) {
         Optional<Room> roomOpt = this.roomRepo.fetchById(roomId);
         if (roomOpt.isEmpty()) {
-            return new ResponseEntity<>(new GetAllItemsByRoomResponse(null, BAD_REQUEST), HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(GetAllItemsByRoomResponse.fromItems(null, NO_ROOM_ITEMS), OK);
         }
         Room room = roomOpt.get();
 
-        if (room.getItems().isEmpty()) {
-            return new ResponseEntity<>(new GetAllItemsByRoomResponse(null, NO_ROOM_ITEMS), OK);
-        }
-
         return new ResponseEntity<>(GetAllItemsByRoomResponse.fromItems(room.getItems(), SUCCESS), OK);
+    }
+
+    @GetMapping("/getAllItemsByContainerId/{containerId}")
+    public ResponseEntity<GetAllItemsByContainerResponse> getAllItemsByContainerId(@PathVariable String containerId) {
+        List<Item> items = this.itemRepo.getItemsByContainerId(containerId);
+
+        if (items.isEmpty()) {
+            return new ResponseEntity<>(GetAllItemsByContainerResponse.fromItems(null, NO_ROOM_ITEMS), OK);
+        } else {
+            return new ResponseEntity<>(GetAllItemsByContainerResponse.fromItems(items, SUCCESS), OK);
+        }
+    }
+
+    @GetMapping("/getAllContainersForRoom/{roomId}")
+    public ResponseEntity<GetAllContainersByRoomResponse> getAllContainersForRoom(
+        @PathVariable String roomId) {
+        List<ItemContainer> containers = this.itemContainerRepo.getContainersByRoomId(roomId);
+
+        if (containers.isEmpty()) {
+            return new ResponseEntity<>(GetAllContainersByRoomResponse.withError(NO_ITEM_CONTAINERS), OK);
+        } else {
+            return new ResponseEntity<>(GetAllContainersByRoomResponse.fromContainers(containers, SUCCESS), OK);
+        }
     }
 }

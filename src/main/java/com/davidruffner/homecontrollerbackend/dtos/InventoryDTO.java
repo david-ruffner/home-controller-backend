@@ -1,6 +1,7 @@
 package com.davidruffner.homecontrollerbackend.dtos;
 
 import com.davidruffner.homecontrollerbackend.entities.inventory.Item;
+import com.davidruffner.homecontrollerbackend.entities.inventory.ItemContainer;
 import com.davidruffner.homecontrollerbackend.entities.inventory.Room;
 import com.davidruffner.homecontrollerbackend.enums.ShortCode;
 
@@ -31,9 +32,59 @@ public class InventoryDTO {
         }
     }
 
-    public record GetAllItemsByRoomResponse(
+    public record GetAllContainersByRoomResponse(
+        List<GetAllContainersByRoomContainer> itemContainers,
+        ShortCode shortCode
+    ) {
+        public static GetAllContainersByRoomResponse fromContainers(List<ItemContainer> containers,
+            ShortCode shortCode) {
+            return new GetAllContainersByRoomResponse(
+                containers != null
+                    ? containers.stream()
+                    .map(GetAllContainersByRoomContainer::new)
+                    .toList()
+                    : null,
+                shortCode
+            );
+        }
+
+        public static GetAllContainersByRoomResponse withError(ShortCode shortCode) {
+            return new GetAllContainersByRoomResponse(null, shortCode);
+        }
+    }
+
+    public record GetAllContainersByRoomContainer(
+        String containerId,
+        String containerName
+    ) {
+        public GetAllContainersByRoomContainer(ItemContainer itemContainer) {
+            this(
+                itemContainer.getContainerId(),
+                itemContainer.getContainerName()
+            );
+        }
+    }
+
+    public record GetAllItemsByContainerResponse(
         List<GetAllItemsByRoomItem> items,
         ShortCode shortCode
+    ) {
+        public static GetAllItemsByContainerResponse fromItems(List<Item> items, ShortCode shortCode) {
+            return new GetAllItemsByContainerResponse(
+                items != null
+                    ? items.stream()
+                    .map(GetAllItemsByRoomItem::new)
+                    .toList()
+                    : null,
+                shortCode
+            );
+        }
+    }
+
+    public record GetAllItemsByRoomResponse(
+        List<GetAllItemsByRoomItem> items,
+        ShortCode shortCode,
+        String errMsg
     ) {
         public static GetAllItemsByRoomResponse fromItems(List<Item> items, ShortCode shortCode) {
             return new GetAllItemsByRoomResponse(
@@ -42,8 +93,13 @@ public class InventoryDTO {
                     .map(GetAllItemsByRoomItem::new)
                     .toList()
                     : null,
-                shortCode
+                shortCode,
+                null
             );
+        }
+
+        public static GetAllItemsByRoomResponse withError(ShortCode shortCode, String errMsg) {
+            return new GetAllItemsByRoomResponse(null, shortCode, errMsg);
         }
     }
 
@@ -56,7 +112,9 @@ public class InventoryDTO {
         String categoryId,
         String categoryName,
         String roomId,
-        String roomName
+        String roomName,
+        String itemContainerId,
+        String itemContainerName
     ) {
         public GetAllItemsByRoomItem(Item item) {
             this(
@@ -68,7 +126,9 @@ public class InventoryDTO {
                 item.getCategory() != null ? item.getCategory().getCategoryId() : null,
                 item.getCategory() != null ? item.getCategory().getCategoryName() : null,
                 item.getRoom() != null ? item.getRoom().getRoomId() : null,
-                item.getRoom() != null ? item.getRoom().getRoomName() : null
+                item.getRoom() != null ? item.getRoom().getRoomName() : null,
+                item.getItemContainer() != null ? item.getItemContainer().getContainerId() : null,
+                item.getItemContainer() != null ? item.getItemContainer().getContainerName() : null
             );
         }
     }

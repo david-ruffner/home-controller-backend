@@ -16,7 +16,8 @@ public enum ShortCode {
     NO_TASKS("NO_TASKS"),
     BAD_REQUEST("BAD_REQUEST"),
     NO_ROOM_ITEMS("NO_ROOM_ITEMS"),
-    NO_ROOMS("NO_ROOMS");
+    NO_ROOMS("NO_ROOMS"),
+    NO_ITEM_CONTAINERS("NO_ITEM_CONTAINERS");
 
     private final String name;
 
