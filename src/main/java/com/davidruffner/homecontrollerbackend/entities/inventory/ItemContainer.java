@@ -2,6 +2,8 @@ package com.davidruffner.homecontrollerbackend.entities.inventory;
 
 import jakarta.persistence.*;
 
+import java.util.List;
+
 @Entity
 @Table(name = "item_container")
 public class ItemContainer {
@@ -12,8 +14,8 @@ public class ItemContainer {
     @Column(name = "container_name", nullable = false)
     private String containerName;
 
-    @OneToOne(mappedBy = "itemContainer")
-    private Item item;
+    @OneToMany(mappedBy = "itemContainer")
+    private java.util.List<Item> items;
 
     public String getContainerId() {
         return containerId;
@@ -31,11 +33,11 @@ public class ItemContainer {
         this.containerName = containerName;
     }
 
-    public Item getItem() {
-        return item;
+    public List<Item> getItems() {
+        return items;
     }
 
-    public void setItem(Item item) {
-        this.item = item;
+    public void setItems(List<Item> items) {
+        this.items = items;
     }
 }

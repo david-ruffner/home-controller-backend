@@ -13,7 +13,7 @@ public interface RoomRepository extends JpaRepository<Room, String> {
 
     @Query("""
         select room from Room room
-        join fetch room.items
+        left join fetch room.items
         where room.roomId = :roomId
     """)
     Optional<Room> fetchById(@Param("roomId") String roomId);

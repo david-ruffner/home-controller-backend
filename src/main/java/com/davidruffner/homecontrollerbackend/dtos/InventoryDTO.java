@@ -1,5 +1,6 @@
 package com.davidruffner.homecontrollerbackend.dtos;
 
+import com.davidruffner.homecontrollerbackend.entities.inventory.Category;
 import com.davidruffner.homecontrollerbackend.entities.inventory.Item;
 import com.davidruffner.homecontrollerbackend.entities.inventory.ItemContainer;
 import com.davidruffner.homecontrollerbackend.entities.inventory.Room;
@@ -29,6 +30,47 @@ public class InventoryDTO {
     ) {
         public GetAllRoomsRoom(Room room) {
             this(room.getRoomId(), room.getRoomName());
+        }
+    }
+
+    public record GetAllItemsForCategoryResponse(
+        List<GetAllItemsByRoomItem> items,
+        ShortCode shortCode
+    ) {
+        public static GetAllItemsForCategoryResponse fromItems(List<Item> items, ShortCode shortCode) {
+            return new GetAllItemsForCategoryResponse(
+                items != null
+                    ? items.stream()
+                    .map(GetAllItemsByRoomItem::new)
+                    .toList()
+                    : null,
+                shortCode
+            );
+        }
+    }
+
+    public record GetAllCategoriesResponse(
+        List<GetAllCategoriesCategory> categories,
+        ShortCode shortCode
+    ) {
+        public static GetAllCategoriesResponse fromCategories(List<Category> categories, ShortCode shortCode) {
+            return new GetAllCategoriesResponse(
+                categories != null
+                    ? categories.stream()
+                    .map(GetAllCategoriesCategory::new)
+                    .toList()
+                    : null,
+                shortCode
+            );
+        }
+    }
+
+    public record GetAllCategoriesCategory(
+        String categoryId,
+        String categoryName
+    ) {
+        public GetAllCategoriesCategory(Category category) {
+            this(category.getCategoryId(), category.getCategoryName());
         }
     }
 
@@ -114,7 +156,8 @@ public class InventoryDTO {
         String roomId,
         String roomName,
         String itemContainerId,
-        String itemContainerName
+        String itemContainerName,
+        Boolean isQuantityAtThreshold
     ) {
         public GetAllItemsByRoomItem(Item item) {
             this(
@@ -128,7 +171,8 @@ public class InventoryDTO {
                 item.getRoom() != null ? item.getRoom().getRoomId() : null,
                 item.getRoom() != null ? item.getRoom().getRoomName() : null,
                 item.getItemContainer() != null ? item.getItemContainer().getContainerId() : null,
-                item.getItemContainer() != null ? item.getItemContainer().getContainerName() : null
+                item.getItemContainer() != null ? item.getItemContainer().getContainerName() : null,
+                item.getQuantity() <= item.getQuantityThreshold()
             );
         }
     }

@@ -12,7 +12,7 @@ public interface ItemContainerRepository extends JpaRepository<ItemContainer, St
     @Query("""
     select ic
     from ItemContainer ic
-    join ic.item i
+    join ic.items i
     where i.room.roomId = :roomId
 """)
     List<ItemContainer> getContainersByRoomId(@Param("roomId") String roomId);

@@ -1,10 +1,8 @@
 package com.davidruffner.homecontrollerbackend.controllers;
 
 import com.davidruffner.homecontrollerbackend.dtos.InventoryDTO;
-import com.davidruffner.homecontrollerbackend.dtos.InventoryDTO.GetAllContainersByRoomResponse;
-import com.davidruffner.homecontrollerbackend.dtos.InventoryDTO.GetAllItemsByContainerResponse;
-import com.davidruffner.homecontrollerbackend.dtos.InventoryDTO.GetAllItemsByRoomResponse;
-import com.davidruffner.homecontrollerbackend.dtos.InventoryDTO.GetAllRoomsResponse;
+import com.davidruffner.homecontrollerbackend.dtos.InventoryDTO.*;
+import com.davidruffner.homecontrollerbackend.entities.inventory.Category;
 import com.davidruffner.homecontrollerbackend.entities.inventory.Item;
 import com.davidruffner.homecontrollerbackend.entities.inventory.ItemContainer;
 import com.davidruffner.homecontrollerbackend.entities.inventory.Room;
@@ -83,6 +81,28 @@ public class InventoryController {
             return new ResponseEntity<>(GetAllContainersByRoomResponse.withError(NO_ITEM_CONTAINERS), OK);
         } else {
             return new ResponseEntity<>(GetAllContainersByRoomResponse.fromContainers(containers, SUCCESS), OK);
+        }
+    }
+
+    @GetMapping("/getAllCategories")
+    public ResponseEntity<GetAllCategoriesResponse> getAllCategories() {
+        List<Category> categories = this.categoryRepo.findAll();
+
+        if (categories.isEmpty()) {
+            return new ResponseEntity<>(GetAllCategoriesResponse.fromCategories(null, NO_CATEGORIES), OK);
+        } else {
+            return new ResponseEntity<>(GetAllCategoriesResponse.fromCategories(categories, SUCCESS), OK);
+        }
+    }
+
+    @GetMapping("/getAllItemsForCategory/{categoryId}")
+    public ResponseEntity<GetAllItemsForCategoryResponse> getAllItemsForCategory(@PathVariable String categoryId) {
+        List<Item> items = this.itemRepo.getItemsByCategoryId(categoryId);
+
+        if (items.isEmpty()) {
+            return new ResponseEntity<>(GetAllItemsForCategoryResponse.fromItems(null, NO_ITEMS_FOR_CATEGORY), OK);
+        } else {
+            return new ResponseEntity<>(GetAllItemsForCategoryResponse.fromItems(items, SUCCESS), OK);
         }
     }
 }

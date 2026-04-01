@@ -31,9 +31,12 @@ public class Item {
     @Column(name = "UPC", nullable = false)
     private String upc;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "container_id")
     private ItemContainer itemContainer;
+
+    @Column(name = "quantity_threshold", nullable = false)
+    private long quantityThreshold;
 
     public Item() {
         this.itemId = UUID.randomUUID().toString();
@@ -101,5 +104,13 @@ public class Item {
 
     public void setItemContainer(ItemContainer itemContainer) {
         this.itemContainer = itemContainer;
+    }
+
+    public long getQuantityThreshold() {
+        return quantityThreshold;
+    }
+
+    public void setQuantityThreshold(long quantityThreshold) {
+        this.quantityThreshold = quantityThreshold;
     }
 }

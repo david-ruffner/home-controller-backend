@@ -11,7 +11,7 @@ public interface CategoryRepository extends JpaRepository<Category, String> {
 
     @Query("""
         select cat from Category cat
-        join fetch cat.items
+        left join fetch cat.items
         where cat.categoryId = :categoryId
     """)
     Optional<Category> fetchById(@Param("categoryId") String categoryId);
