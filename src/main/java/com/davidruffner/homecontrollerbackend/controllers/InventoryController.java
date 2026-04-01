@@ -1,27 +1,33 @@
 package com.davidruffner.homecontrollerbackend.controllers;
 
+import com.davidruffner.homecontrollerbackend.builders.InventorySearchQueryBuilder;
 import com.davidruffner.homecontrollerbackend.dtos.InventoryDTO;
 import com.davidruffner.homecontrollerbackend.dtos.InventoryDTO.*;
 import com.davidruffner.homecontrollerbackend.entities.inventory.Category;
 import com.davidruffner.homecontrollerbackend.entities.inventory.Item;
 import com.davidruffner.homecontrollerbackend.entities.inventory.ItemContainer;
 import com.davidruffner.homecontrollerbackend.entities.inventory.Room;
+import com.davidruffner.homecontrollerbackend.enums.ResponseCode;
+import com.davidruffner.homecontrollerbackend.enums.ShortCode;
+import com.davidruffner.homecontrollerbackend.exceptions.ControllerException;
 import com.davidruffner.homecontrollerbackend.repositories.inventory.CategoryRepository;
 import com.davidruffner.homecontrollerbackend.repositories.inventory.ItemContainerRepository;
 import com.davidruffner.homecontrollerbackend.repositories.inventory.ItemRepository;
 import com.davidruffner.homecontrollerbackend.repositories.inventory.RoomRepository;
+import com.davidruffner.homecontrollerbackend.utils.Utils;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
 
+import static com.davidruffner.homecontrollerbackend.enums.ResponseCode.BAD_REQUEST;
 import static com.davidruffner.homecontrollerbackend.enums.ShortCode.*;
+import static com.davidruffner.homecontrollerbackend.enums.ShortCode.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.OK;
 
 @RestController
@@ -38,6 +44,9 @@ public class InventoryController {
 
     @Autowired
     ItemContainerRepository itemContainerRepo;
+
+    @PersistenceContext
+    EntityManager entityManager;
 
     @GetMapping("/getAllRooms")
     public ResponseEntity<GetAllRoomsResponse> getAllRooms() {
@@ -104,5 +113,40 @@ public class InventoryController {
         } else {
             return new ResponseEntity<>(GetAllItemsForCategoryResponse.fromItems(items, SUCCESS), OK);
         }
+    }
+
+    @PostMapping("/searchItems")
+    public ResponseEntity<SearchItemsResponse> searchItems(@RequestBody SearchItemsRequest body) {
+        InventorySearchQueryBuilder sqlBuilder = new InventorySearchQueryBuilder().selectItems();
+
+        if (!Utils.strEmpty(body.searchTerm())) {
+            sqlBuilder.whereSearchTerm(body.searchTerm());
+        }
+
+        if (body.searchFilters() != null) {
+            body.searchFilters().forEach(sf -> {
+                if (sf.searchFilterTypeOpt().isPresent()) {
+                    sqlBuilder.whereFilter(sf.searchFilterType(),
+                        sf.searchFilterIdOpt().orElseThrow(() -> new ControllerException(
+                            "Requested filter type search, but did not provide a searchFilterId", ResponseCode.BAD_REQUEST)));
+                }
+            });
+        }
+
+        if (body.searchQuantityFilters() != null) {
+            body.searchQuantityFilters().forEach(sqf -> {
+                if (sqf.searchQuantityTypeOpt().isPresent()) {
+                    sqlBuilder.whereQuantity(sqf.searchQuantityType(),
+                        sqf.searchQuantityValOpt().orElseThrow(() -> new ControllerException(
+                            "Requested quantity type search, but did not provide a quantity value", ResponseCode.BAD_REQUEST)));
+                }
+            });
+        }
+
+        List<Item> items = sqlBuilder
+            .build(entityManager, Item.class)
+            .getResultList();
+
+        return new ResponseEntity<>(SearchItemsResponse.fromItems(items, SUCCESS), OK);
     }
 }
