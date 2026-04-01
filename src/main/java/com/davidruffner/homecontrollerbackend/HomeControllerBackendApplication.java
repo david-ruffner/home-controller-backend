@@ -3,6 +3,7 @@ package com.davidruffner.homecontrollerbackend;
 import com.davidruffner.homecontrollerbackend.config.HashUtilConfig;
 import com.davidruffner.homecontrollerbackend.config.TodoistConfig;
 import com.davidruffner.homecontrollerbackend.config.UserSettingsConfig;
+import com.davidruffner.homecontrollerbackend.config.WebSocketConfig;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
