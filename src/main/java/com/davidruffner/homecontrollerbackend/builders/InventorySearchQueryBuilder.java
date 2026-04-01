@@ -49,6 +49,7 @@ public class InventorySearchQueryBuilder {
 
         if (!whereStarted) {
             sql.append("WHERE (");
+            whereStarted = true;
         } else {
             sql.append("AND (");
         }
@@ -100,6 +101,7 @@ public class InventorySearchQueryBuilder {
 
         if (!whereStarted) {
             sql.append("WHERE (");
+            whereStarted = true;
         } else {
             sql.append("AND (");
         }
