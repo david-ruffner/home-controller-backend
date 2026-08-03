@@ -96,6 +96,64 @@ CREATE TABLE user_settings (
     PRIMARY KEY (user_settings_id)
 );
 
+CREATE TABLE inventory_item(
+    item_id VARCHAR(64) NOT NULL,
+    item_name VARCHAR(1000) NOT NULL,
+    item_description TEXT NULL,
+    room_id VARCHAR(64) NULL,
+    container_id VARCHAR(64) NULL,
+    upc VARCHAR(256) NOT NULL,
+    current_quantity LONG NOT NULL,
+    quantity_threshold LONG NULL,
+    notify_on_threshold BOOL NOT NULL,
+    favorite_id VARCHAR(64) NULL,
+
+    PRIMARY KEY (item_id)
+);
+
+CREATE TABLE inventory_room(
+    room_id VARCHAR(64) NOT NULL,
+    room_name VARCHAR(1000) NOT NULL,
+
+    PRIMARY KEY (room_id)
+);
+
+CREATE TABLE inventory_container(
+    container_id VARCHAR(64) NOT NULL,
+    room_id VARCHAR(64) NOT NULL,
+    container_name VARCHAR(1000) NOT NULL,
+
+    PRIMARY KEY (container_id)
+);
+
+CREATE TABLE inventory_favorites(
+    favorite_id VARCHAR(64) NOT NULL,
+
+    PRIMARY KEY (favorite_id)
+);
+
+CREATE TABLE inventory_category(
+    category_id VARCHAR(64) NOT NULL,
+    category_name VARCHAR(1000) NOT NULL,
+
+    PRIMARY KEY (category_id)
+);
+
+CREATE TABLE inventory_tags(
+    tag_id VARCHAR(64) NOT NULL,
+    tag_name VARCHAR(1000) NOT NULL,
+
+    PRIMARY KEY (tag_id)
+);
+
+CREATE TABLE inventory_tag_inventory_item(
+    tag_item_id VARCHAR(64) NOT NULL,
+    tag_id VARCHAR(64) NOT NULL,
+    item_id VARCHAR(64) NOT NULL,
+
+    PRIMARY KEY (tag_item_id)
+);
+
 INSERT INTO user_settings (
     user_settings_id, address, lat, lon, weather_api_key, hue_api_key, todoist_api_key, geoapify_key,
     city, state, state_code, time_zone, name, pin_number, account_type, username,

@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "category")
-public class Category {
+@Table(name = "inventory_category")
+public class InventoryCategory {
     @Id
     @Column(name = "category_id")
     private String categoryId;
@@ -16,14 +16,14 @@ public class Category {
     @Column(name = "category_name")
     private String categoryName;
 
-    @OneToMany(mappedBy = "category", fetch = FetchType.LAZY)
-    private List<Item> items = new ArrayList<>();
+    @OneToMany(mappedBy = "inventoryCategory", fetch = FetchType.LAZY)
+    private List<InventoryItem> items = new ArrayList<>();
 
-    public Category() {
+    public InventoryCategory() {
         this.categoryId = UUID.randomUUID().toString();
     }
 
-    public Category(String categoryId) {
+    public InventoryCategory(String categoryId) {
         this.categoryId = categoryId;
     }
 
@@ -31,7 +31,7 @@ public class Category {
         return categoryId;
     }
 
-    public List<Item> getItems() {
+    public List<InventoryItem> getItems() {
         return items;
     }
 

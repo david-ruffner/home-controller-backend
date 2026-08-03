@@ -1,26 +1,25 @@
-package com.davidruffner.homecontrollerbackend.entities.inventory;
+package com.davidruffner.homecontrollerbackend.entities;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
 @Table(name = "room")
 public class Room {
+
     @Id
-    @Column(name = "room_id")
+    @Column(name = "room_id", nullable = false)
     private String roomId;
 
-    @Column(name = "room_name")
+    @Column(name = "room_name", nullable = false)
     private String roomName;
 
     @Column(name = "group_id", nullable = false)
     private String groupId;
-
-    @OneToMany(mappedBy = "room", fetch = FetchType.LAZY)
-    private List<Item> items = new ArrayList<>();
 
     public Room() {
         this.roomId = UUID.randomUUID().toString();
@@ -32,10 +31,6 @@ public class Room {
 
     public String getRoomId() {
         return roomId;
-    }
-
-    public List<Item> getItems() {
-        return items;
     }
 
     public String getRoomName() {

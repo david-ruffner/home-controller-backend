@@ -1,12 +1,10 @@
 package com.davidruffner.homecontrollerbackend.dtos;
 
-import com.davidruffner.homecontrollerbackend.entities.inventory.Category;
-import com.davidruffner.homecontrollerbackend.entities.inventory.Item;
+import com.davidruffner.homecontrollerbackend.entities.inventory.InventoryCategory;
+import com.davidruffner.homecontrollerbackend.entities.inventory.InventoryItem;
 import com.davidruffner.homecontrollerbackend.entities.inventory.ItemContainer;
-import com.davidruffner.homecontrollerbackend.entities.inventory.Room;
-import com.davidruffner.homecontrollerbackend.enums.ResponseCode;
+import com.davidruffner.homecontrollerbackend.entities.inventory.InventoryRoom;
 import com.davidruffner.homecontrollerbackend.enums.ShortCode;
-import com.davidruffner.homecontrollerbackend.exceptions.ControllerException;
 
 import java.util.Arrays;
 import java.util.List;
@@ -15,14 +13,12 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.davidruffner.homecontrollerbackend.enums.ResponseCode.BAD_REQUEST;
-
 public class InventoryDTO {
     public record GetAllRoomsResponse(
         List<GetAllRoomsRoom> rooms,
         ShortCode shortCode
     ) {
-        public static GetAllRoomsResponse fromRooms(List<Room> rooms, ShortCode shortCode) {
+        public static GetAllRoomsResponse fromRooms(List<InventoryRoom> rooms, ShortCode shortCode) {
             return new GetAllRoomsResponse(rooms != null ?
                 rooms.stream()
                     .map(GetAllRoomsRoom::new)
@@ -37,7 +33,7 @@ public class InventoryDTO {
         String roomId,
         String roomName
     ) {
-        public GetAllRoomsRoom(Room room) {
+        public GetAllRoomsRoom(InventoryRoom room) {
             this(room.getRoomId(), room.getRoomName());
         }
     }
@@ -46,7 +42,7 @@ public class InventoryDTO {
         List<GetAllItemsByRoomItem> items,
         ShortCode shortCode
     ) {
-        public static GetAllItemsForCategoryResponse fromItems(List<Item> items, ShortCode shortCode) {
+        public static GetAllItemsForCategoryResponse fromItems(List<InventoryItem> items, ShortCode shortCode) {
             return new GetAllItemsForCategoryResponse(
                 items != null
                     ? items.stream()
@@ -62,7 +58,7 @@ public class InventoryDTO {
         List<GetAllCategoriesCategory> categories,
         ShortCode shortCode
     ) {
-        public static GetAllCategoriesResponse fromCategories(List<Category> categories, ShortCode shortCode) {
+        public static GetAllCategoriesResponse fromCategories(List<InventoryCategory> categories, ShortCode shortCode) {
             return new GetAllCategoriesResponse(
                 categories != null
                     ? categories.stream()
@@ -78,7 +74,7 @@ public class InventoryDTO {
         String categoryId,
         String categoryName
     ) {
-        public GetAllCategoriesCategory(Category category) {
+        public GetAllCategoriesCategory(InventoryCategory category) {
             this(category.getCategoryId(), category.getCategoryName());
         }
     }
@@ -120,7 +116,7 @@ public class InventoryDTO {
         List<GetAllItemsByRoomItem> items,
         ShortCode shortCode
     ) {
-        public static GetAllItemsByContainerResponse fromItems(List<Item> items, ShortCode shortCode) {
+        public static GetAllItemsByContainerResponse fromItems(List<InventoryItem> items, ShortCode shortCode) {
             return new GetAllItemsByContainerResponse(
                 items != null
                     ? items.stream()
@@ -137,7 +133,7 @@ public class InventoryDTO {
         ShortCode shortCode,
         String errMsg
     ) {
-        public static GetAllItemsByRoomResponse fromItems(List<Item> items, ShortCode shortCode) {
+        public static GetAllItemsByRoomResponse fromItems(List<InventoryItem> items, ShortCode shortCode) {
             return new GetAllItemsByRoomResponse(
                 items != null
                     ? items.stream()
@@ -168,17 +164,17 @@ public class InventoryDTO {
         String itemContainerName,
         Boolean isQuantityAtThreshold
     ) {
-        public GetAllItemsByRoomItem(Item item) {
+        public GetAllItemsByRoomItem(InventoryItem item) {
             this(
                 item.getItemId(),
                 item.getItemName(),
-                item.getDescription(),
+                item.getItemDescription(),
                 item.getUpc(),
                 item.getQuantity(),
-                item.getCategory() != null ? item.getCategory().getCategoryId() : null,
-                item.getCategory() != null ? item.getCategory().getCategoryName() : null,
-                item.getRoom() != null ? item.getRoom().getRoomId() : null,
-                item.getRoom() != null ? item.getRoom().getRoomName() : null,
+                item.getInventoryCategory() != null ? item.getInventoryCategory().getCategoryId() : null,
+                item.getInventoryCategory() != null ? item.getInventoryCategory().getCategoryName() : null,
+                item.getInventoryRoom() != null ? item.getInventoryRoom().getRoomId() : null,
+                item.getInventoryRoom() != null ? item.getInventoryRoom().getRoomName() : null,
                 item.getItemContainer() != null ? item.getItemContainer().getContainerId() : null,
                 item.getItemContainer() != null ? item.getItemContainer().getContainerName() : null,
                 item.getQuantity() <= item.getQuantityThreshold()
@@ -190,7 +186,7 @@ public class InventoryDTO {
         List<GetAllItemsByRoomItem> items,
         ShortCode shortCode
     ) {
-        public static SearchItemsResponse fromItems(List<Item> items, ShortCode shortCode) {
+        public static SearchItemsResponse fromItems(List<InventoryItem> items, ShortCode shortCode) {
             return new SearchItemsResponse(
                 items != null
                     ? items.stream()

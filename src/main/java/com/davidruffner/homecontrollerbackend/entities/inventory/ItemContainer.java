@@ -15,7 +15,7 @@ public class ItemContainer {
     private String containerName;
 
     @OneToMany(mappedBy = "itemContainer")
-    private java.util.List<Item> items;
+    private java.util.List<InventoryItem> items;
 
     public String getContainerId() {
         return containerId;
@@ -33,11 +33,11 @@ public class ItemContainer {
         this.containerName = containerName;
     }
 
-    public List<Item> getItems() {
+    public List<InventoryItem> getItems() {
         return items;
     }
 
-    public void setItems(List<Item> items) {
+    public void setItems(List<InventoryItem> items) {
         this.items = items;
     }
 }

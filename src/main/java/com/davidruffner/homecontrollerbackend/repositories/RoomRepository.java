@@ -1,6 +1,7 @@
 package com.davidruffner.homecontrollerbackend.repositories;
 
-import com.davidruffner.homecontrollerbackend.entities.inventory.Room;
+import com.davidruffner.homecontrollerbackend.entities.Room;
+import com.davidruffner.homecontrollerbackend.entities.inventory.InventoryRoom;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,7 +13,6 @@ public interface RoomRepository extends JpaRepository<Room, String> {
 
     @Query("""
         select room from Room room
-        left join fetch room.items
         where room.roomId = :roomId
     """)
     Optional<Room> fetchById(@Param("roomId") String roomId);
@@ -20,5 +20,5 @@ public interface RoomRepository extends JpaRepository<Room, String> {
     @Query("""
         select room from Room room
     """)
-    List<Room> fetchAllRooms();
+    List<InventoryRoom> fetchAllRooms();
 }

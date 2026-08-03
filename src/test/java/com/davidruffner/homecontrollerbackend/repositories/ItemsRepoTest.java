@@ -1,9 +1,10 @@
 package com.davidruffner.homecontrollerbackend.repositories;
 
-import com.davidruffner.homecontrollerbackend.entities.inventory.Category;
-import com.davidruffner.homecontrollerbackend.entities.inventory.Item;
-import com.davidruffner.homecontrollerbackend.entities.inventory.Room;
+import com.davidruffner.homecontrollerbackend.entities.inventory.InventoryCategory;
+import com.davidruffner.homecontrollerbackend.entities.inventory.InventoryItem;
+import com.davidruffner.homecontrollerbackend.entities.inventory.InventoryRoom;
 import com.davidruffner.homecontrollerbackend.repositories.inventory.CategoryRepository;
+import com.davidruffner.homecontrollerbackend.repositories.inventory.InventoryRoomRepository;
 import com.davidruffner.homecontrollerbackend.repositories.inventory.ItemRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,34 +22,34 @@ public class ItemsRepoTest {
     CategoryRepository categoryRepo;
 
     @Autowired
-    RoomRepository roomRepo;
+    InventoryRoomRepository roomRepo;
 
     @Test
     public void testInventoryEntities() {
-        Category cat = new Category();
+        InventoryCategory cat = new InventoryCategory();
         cat.setCategoryName("Medicine");
         String categoryId = cat.getCategoryId();
 
-        Room room = new Room();
+        InventoryRoom room = new InventoryRoom();
         room.setRoomName("Kitchen");
         String roomId = room.getRoomId();
 
-        Item item = new Item();
+        InventoryItem item = new InventoryItem();
         item.setItemName("My Item");
-        item.setDescription("Description");
+        item.setItemDescription("Description");
         item.setUpc("FJJFD8AJFDAJF");
         item.setQuantity(3);
-        item.setCategory(cat);
-        item.setRoom(room);
+        item.setInventoryCategory(cat);
+        item.setInventoryRoom(room);
         String item1Id = item.getItemId();
 
-        Item item2 = new Item();
+        InventoryItem item2 = new InventoryItem();
         item2.setItemName("2nd Item");
-        item2.setDescription("Description");
+        item2.setItemDescription("Description");
         item2.setUpc("FJKFDAJ8FDJAF");
         item2.setQuantity(6);
-        item2.setCategory(cat);
-        item2.setRoom(room);
+        item2.setInventoryCategory(cat);
+        item2.setInventoryRoom(room);
         String item2Id = item2.getItemId();
 
         this.categoryRepo.save(cat);
@@ -56,13 +57,13 @@ public class ItemsRepoTest {
         this.itemRepo.save(item);
         this.itemRepo.save(item2);
 
-        Item actualItem1 = this.itemRepo.fetchById(item1Id).get();
-        Item actualItem2 = this.itemRepo.fetchById(item2Id).get();
-        Category actualCategory = this.categoryRepo.fetchById(categoryId).get();
-        Room actualRoom = this.roomRepo.fetchById(roomId).get();
+        InventoryItem actualItem1 = this.itemRepo.fetchById(item1Id).get();
+        InventoryItem actualItem2 = this.itemRepo.fetchById(item2Id).get();
+        InventoryCategory actualCategory = this.categoryRepo.fetchById(categoryId).get();
+        InventoryRoom actualRoom = this.roomRepo.findById(roomId).get();
 
-        assertEquals(categoryId, actualItem1.getCategory().getCategoryId());
-        assertEquals(roomId, actualItem2.getRoom().getRoomId());
+        assertEquals(categoryId, actualItem1.getInventoryCategory().getCategoryId());
+        assertEquals(roomId, actualItem2.getInventoryRoom().getRoomId());
 
         assertFalse(actualCategory.getItems()
             .stream()

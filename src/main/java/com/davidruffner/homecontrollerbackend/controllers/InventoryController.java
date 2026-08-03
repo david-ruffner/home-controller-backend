@@ -2,13 +2,14 @@ package com.davidruffner.homecontrollerbackend.controllers;
 
 import com.davidruffner.homecontrollerbackend.builders.InventorySearchQueryBuilder;
 import com.davidruffner.homecontrollerbackend.dtos.InventoryDTO.*;
-import com.davidruffner.homecontrollerbackend.entities.inventory.Category;
-import com.davidruffner.homecontrollerbackend.entities.inventory.Item;
+import com.davidruffner.homecontrollerbackend.entities.inventory.InventoryCategory;
+import com.davidruffner.homecontrollerbackend.entities.inventory.InventoryItem;
 import com.davidruffner.homecontrollerbackend.entities.inventory.ItemContainer;
-import com.davidruffner.homecontrollerbackend.entities.inventory.Room;
+import com.davidruffner.homecontrollerbackend.entities.inventory.InventoryRoom;
 import com.davidruffner.homecontrollerbackend.enums.ResponseCode;
 import com.davidruffner.homecontrollerbackend.exceptions.ControllerException;
 import com.davidruffner.homecontrollerbackend.repositories.inventory.CategoryRepository;
+import com.davidruffner.homecontrollerbackend.repositories.inventory.InventoryRoomRepository;
 import com.davidruffner.homecontrollerbackend.repositories.inventory.ItemContainerRepository;
 import com.davidruffner.homecontrollerbackend.repositories.inventory.ItemRepository;
 import com.davidruffner.homecontrollerbackend.repositories.RoomRepository;
@@ -35,7 +36,7 @@ public class InventoryController {
     CategoryRepository categoryRepo;
 
     @Autowired
-    RoomRepository roomRepo;
+    InventoryRoomRepository roomRepo;
 
     @Autowired
     ItemContainerRepository itemContainerRepo;
@@ -45,7 +46,7 @@ public class InventoryController {
 
     @GetMapping("/getAllRooms")
     public ResponseEntity<GetAllRoomsResponse> getAllRooms() {
-        List<Room> rooms = this.roomRepo.fetchAllRooms();
+        List<InventoryRoom> rooms = this.roomRepo.getAllRooms();
         if (rooms.isEmpty()) {
             return new ResponseEntity<>(new GetAllRoomsResponse(null, NO_ROOMS), OK);
         }
@@ -56,18 +57,18 @@ public class InventoryController {
 
     @GetMapping("/getAllItemsByRoom/{roomId}")
     public ResponseEntity<GetAllItemsByRoomResponse> getAllItemsByRoom(@PathVariable String roomId) {
-        Optional<Room> roomOpt = this.roomRepo.fetchById(roomId);
+        Optional<InventoryRoom> roomOpt = this.roomRepo.findById(roomId);
         if (roomOpt.isEmpty()) {
             return new ResponseEntity<>(GetAllItemsByRoomResponse.fromItems(null, NO_ROOM_ITEMS), OK);
         }
-        Room room = roomOpt.get();
+        InventoryRoom room = roomOpt.get();
 
         return new ResponseEntity<>(GetAllItemsByRoomResponse.fromItems(room.getItems(), SUCCESS), OK);
     }
 
     @GetMapping("/getAllItemsByContainerId/{containerId}")
     public ResponseEntity<GetAllItemsByContainerResponse> getAllItemsByContainerId(@PathVariable String containerId) {
-        List<Item> items = this.itemRepo.getItemsByContainerId(containerId);
+        List<InventoryItem> items = this.itemRepo.getItemsByContainerId(containerId);
 
         if (items.isEmpty()) {
             return new ResponseEntity<>(GetAllItemsByContainerResponse.fromItems(null, NO_ROOM_ITEMS), OK);
@@ -90,7 +91,7 @@ public class InventoryController {
 
     @GetMapping("/getAllCategories")
     public ResponseEntity<GetAllCategoriesResponse> getAllCategories() {
-        List<Category> categories = this.categoryRepo.findAll();
+        List<InventoryCategory> categories = this.categoryRepo.findAll();
 
         if (categories.isEmpty()) {
             return new ResponseEntity<>(GetAllCategoriesResponse.fromCategories(null, NO_CATEGORIES), OK);
@@ -101,7 +102,7 @@ public class InventoryController {
 
     @GetMapping("/getAllItemsForCategory/{categoryId}")
     public ResponseEntity<GetAllItemsForCategoryResponse> getAllItemsForCategory(@PathVariable String categoryId) {
-        List<Item> items = this.itemRepo.getItemsByCategoryId(categoryId);
+        List<InventoryItem> items = this.itemRepo.getItemsByCategoryId(categoryId);
 
         if (items.isEmpty()) {
             return new ResponseEntity<>(GetAllItemsForCategoryResponse.fromItems(null, NO_ITEMS_FOR_CATEGORY), OK);
@@ -138,8 +139,8 @@ public class InventoryController {
             });
         }
 
-        List<Item> items = sqlBuilder
-            .build(entityManager, Item.class)
+        List<InventoryItem> items = sqlBuilder
+            .build(entityManager, InventoryItem.class)
             .getResultList();
 
         return new ResponseEntity<>(SearchItemsResponse.fromItems(items, SUCCESS), OK);

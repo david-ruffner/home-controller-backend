@@ -3,7 +3,7 @@ package com.davidruffner.homecontrollerbackend.services;
 import com.davidruffner.homecontrollerbackend.HueGroupResponseDto.GetBulbsForGroupResponse;
 import com.davidruffner.homecontrollerbackend.HueGroupResponseDto.HueGroupResponse;
 import com.davidruffner.homecontrollerbackend.entities.*;
-import com.davidruffner.homecontrollerbackend.entities.inventory.Room;
+import com.davidruffner.homecontrollerbackend.entities.inventory.InventoryRoom;
 import com.davidruffner.homecontrollerbackend.repositories.FavoriteColorRepository;
 import com.davidruffner.homecontrollerbackend.repositories.LightBulbTrackRepository;
 import com.davidruffner.homecontrollerbackend.repositories.RoomRepository;
@@ -261,7 +261,7 @@ public class LightsService {
             }
 
             // Check if the roomID exists in rooms, if not, add it.
-            if (this.roomRepo.findById(room.id()).isEmpty()) {
+                if (this.roomRepo.findById(room.id()).isEmpty()) {
                 Room newRoom = new Room(room.id());
                 newRoom.setRoomName(room.metadata().name());
                 newRoom.setGroupId(groupId);
