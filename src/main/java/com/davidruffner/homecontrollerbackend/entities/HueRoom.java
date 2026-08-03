@@ -56,12 +56,12 @@ public class HueRoom {
 
     public void setFavoriteColors(List<FavoriteColor> favoriteColors) {
         // If there are less than the default amount of favorite colors, add some padding colors.
-        int leftoverFavoriteColors = DEFAULT_FAVORITE_COLORS_LENGTH - favoriteColors.size();
-        for (int i = 0; i < leftoverFavoriteColors; i++) {
-            FavoriteColor defaultFavColor = new FavoriteColor();
-            defaultFavColor.setColorFromRGB(DEFAULT_FAV_COLOR);
-            favoriteColors.add(defaultFavColor);
-        }
+//        int leftoverFavoriteColors = DEFAULT_FAVORITE_COLORS_LENGTH - favoriteColors.size();
+//        for (int i = 0; i < leftoverFavoriteColors; i++) {
+//            FavoriteColor defaultFavColor = new FavoriteColor();
+//            defaultFavColor.setColorFromRGB(DEFAULT_FAV_COLOR);
+//            favoriteColors.add(defaultFavColor);
+//        }
 
         this.favoriteColors = favoriteColors;
     }

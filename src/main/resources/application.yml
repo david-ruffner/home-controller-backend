@@ -21,6 +21,9 @@ app:
     digestType: SHA-256
 #    jwtKey: In secrets
 
+  favoriteColors:
+    maxFavoriteColors: 9
+
   userSettings:
     allowedApps:
       standard:

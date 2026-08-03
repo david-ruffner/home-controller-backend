@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.sql.Timestamp;
 import java.util.UUID;
 
 @Entity
@@ -14,20 +15,14 @@ public class FavoriteColor {
     @Column(name = "favorite_color_id", nullable = false)
     private String favoriteColorId;
 
-    @Column(name = "light_id")
-    private String lightId;
-
-    @Column(name = "group_id")
-    private String groupId;
+    @Column(name = "room_id", nullable = false)
+    private String roomId;
 
     @Column(name = "color", nullable = false)
     private String color; // Stored as red,green,blue,alpha
 
-    @Column(name = "control_device_id", nullable = false)
-    private String controlDeviceId;
-
-    @Column(name = "index_num", nullable = false)
-    private Integer index;
+    @Column(name = "timestamp", nullable = false)
+    private Timestamp timestamp;
 
     public FavoriteColor() {
         this.favoriteColorId = UUID.randomUUID().toString();
@@ -43,22 +38,6 @@ public class FavoriteColor {
 
     public void setFavoriteColorId(String favoriteColorId) {
         this.favoriteColorId = favoriteColorId;
-    }
-
-    public String getLightId() {
-        return lightId;
-    }
-
-    public void setLightId(String lightId) {
-        this.lightId = lightId;
-    }
-
-    public String getGroupId() {
-        return groupId;
-    }
-
-    public void setGroupId(String groupId) {
-        this.groupId = groupId;
     }
 
     public String getColor() {
@@ -77,20 +56,20 @@ public class FavoriteColor {
         this.color = rgbColor.toString();
     }
 
-    public void setControlDeviceId(String controlDeviceId) {
-        this.controlDeviceId = controlDeviceId;
+    public String getRoomId() {
+        return roomId;
     }
 
-    public String getControlDeviceId() {
-        return controlDeviceId;
+    public void setRoomId(String roomId) {
+        this.roomId = roomId;
     }
 
-    public Integer getIndex() {
-        return index;
+    public Timestamp getTimestamp() {
+        return timestamp;
     }
 
-    public void setIndex(Integer index) {
-        this.index = index;
+    public void setTimestamp(Timestamp timestamp) {
+        this.timestamp = timestamp;
     }
 
     public String getRGBAsString() {

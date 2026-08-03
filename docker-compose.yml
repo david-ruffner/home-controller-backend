@@ -27,24 +27,17 @@ services:
     container_name: home-controls-mysql
     ports:
       - "3306:3306"
+    env_file:
+      - .env
     environment:
-      # 1. Root username is 'root' by default for the image
-      # 2. Root password:
-      MYSQL_ROOT_PASSWORD: password
-      # 4. Create database:
-      MYSQL_DATABASE: homecontrols
-      # 3. Create app user & password:
-      MYSQL_USER: homecontrols
-      MYSQL_PASSWORD: password
-      # The official entrypoint will:
-      # - create 'musedb'
-      # - create 'museapp'@'%' with the given password
-      # - GRANT ALL on musedb.* to 'museapp' (step 5)
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
-      # Persist database files
       - home-control-mysql-data:/var/lib/mysql
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-ppassword" ]
+      test: [ "CMD", "mysqladmin", "ping", "-p${MYSQL_ROOT_PASSWORD}" ]
       interval: 10s
       timeout: 5s
       retries: 5

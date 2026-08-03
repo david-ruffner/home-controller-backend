@@ -1,6 +1,5 @@
-package com.davidruffner.homecontrollerbackend.repositories.inventory;
+package com.davidruffner.homecontrollerbackend.repositories;
 
-import com.davidruffner.homecontrollerbackend.entities.inventory.Category;
 import com.davidruffner.homecontrollerbackend.entities.inventory.Room;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

@@ -7,6 +7,7 @@ import com.davidruffner.homecontrollerbackend.exceptions.ControllerException;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.hibernate.query.range.Range;
 
+import java.security.SecureRandom;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
@@ -137,5 +138,19 @@ public class Utils {
 
     public static String getTodoistLabelColorByName(String colorName) {
         return TODOIST_LABEL_COLORS.getOrDefault(colorName, DEFAULT_TODOIST_LABEL_COLOR);
+    }
+
+    private static final String BASE64_ALPHABET =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    public static String generateRandomB64Str(int strLen) {
+        StringBuilder sb = new StringBuilder(strLen);
+
+        for (int i = 0; i < strLen; i++) {
+            sb.append(BASE64_ALPHABET.charAt(SECURE_RANDOM.nextInt(BASE64_ALPHABET.length())));
+        }
+
+        return sb.toString();
     }
 }

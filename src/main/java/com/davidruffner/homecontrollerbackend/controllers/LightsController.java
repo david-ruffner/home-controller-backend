@@ -52,8 +52,7 @@ public class LightsController {
         }
 
         HueRoom hueRoom = this.lightsService.getLightBulbsMappedByRoom().get(roomId);
-        List<FavoriteColor> favoriteColors = this.favoriteColorRepo.getColorsByGroupId(hueRoom.getGroupToggleId());
-        hueRoom.setFavoriteColors(favoriteColors);
+        hueRoom.setFavoriteColors(this.favoriteColorRepo.getFavoriteColorsForRoom(roomId));
 
         return ResponseEntity.ok(hueRoom);
     }
@@ -141,34 +140,5 @@ public class LightsController {
         ResponseEntity<GetBulbsForGroupResponse> response = this.lightsService.getBulbsForGroup(groupId);
 
         return response;
-    }
-
-    public record UpdateFavoriteColorsRequest(
-        String controlDeviceId,
-        String groupId,
-        String lightId,
-        String colorString,
-        String favoriteColorId
-    ) {}
-
-    @PostMapping("/updateFavoriteColors")
-    public ResponseEntity<Void> updateFavoriteColors(@RequestBody UpdateFavoriteColorsRequest body) {
-        if (strNotEmpty(body.favoriteColorId())) {
-            if (this.favoriteColorRepo.findById(body.favoriteColorId()).isPresent()) {
-                this.favoriteColorRepo.updateFavoriteColorByFavoriteColorId(body.colorString(),
-                    body.favoriteColorId());
-            } else {
-                FavoriteColor newFavColor = new FavoriteColor(body.favoriteColorId());
-                newFavColor.setControlDeviceId(body.controlDeviceId());
-                newFavColor.setGroupId(body.groupId());
-                newFavColor.setLightId(body.lightId());
-                newFavColor.setColorFromRGB(new RGB(body.colorString()));
-                newFavColor.setIndex(1);
-
-                this.favoriteColorRepo.save(newFavColor);
-            }
-        }
-
-        return ResponseEntity.ok().build();
     }
 }

@@ -1,9 +1,6 @@
 package com.davidruffner.homecontrollerbackend;
 
-import com.davidruffner.homecontrollerbackend.config.HashUtilConfig;
-import com.davidruffner.homecontrollerbackend.config.TodoistConfig;
-import com.davidruffner.homecontrollerbackend.config.UserSettingsConfig;
-import com.davidruffner.homecontrollerbackend.config.WebSocketConfig;
+import com.davidruffner.homecontrollerbackend.config.*;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -12,7 +9,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 @EnableConfigurationProperties({
     UserSettingsConfig.class,
     HashUtilConfig.class,
-    TodoistConfig.class
+    TodoistConfig.class,
+    FavoriteColorsConfig.class
 })
 public class HomeControllerBackendApplication {
 

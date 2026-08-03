@@ -3,14 +3,15 @@ package com.davidruffner.homecontrollerbackend.services;
 import com.davidruffner.homecontrollerbackend.HueGroupResponseDto.GetBulbsForGroupResponse;
 import com.davidruffner.homecontrollerbackend.HueGroupResponseDto.HueGroupResponse;
 import com.davidruffner.homecontrollerbackend.entities.*;
+import com.davidruffner.homecontrollerbackend.entities.inventory.Room;
 import com.davidruffner.homecontrollerbackend.repositories.FavoriteColorRepository;
 import com.davidruffner.homecontrollerbackend.repositories.LightBulbTrackRepository;
+import com.davidruffner.homecontrollerbackend.repositories.RoomRepository;
 import com.davidruffner.homecontrollerbackend.services.ColorConversionService.RgbToXyDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.client.RestClient;
 
 import java.util.*;
@@ -33,6 +34,9 @@ public class LightsService {
 
     @Autowired
     FavoriteColorRepository favoriteColorRepo;
+
+    @Autowired
+    RoomRepository roomRepo;
 
     public record ServiceDto(
         String rid,
@@ -127,18 +131,19 @@ public class LightsService {
                     lightBulb.setLightStatus(light.on().on());
                     lightBulb.setColor(color);
                     lightBulb.setBrightness(light.dimming().brightness());
-                    lightBulb.setFavoriteColors(this.favoriteColorRepo.getColorsByLightId(lightId));
+//                    lightBulb.setFavoriteColors(this.favoriteColorRepo.getColorsByLightId(lightId));
 
-                    LightBulbTrack track = new LightBulbTrack();
-                    track.setLightId(lightId);
-                    track.setDeviceId(deviceId);
-                    track.setBrightness(light.dimming.brightness());
-                    track.setRed(color.getRed());
-                    track.setBlue(color.getBlue());
-                    track.setGreen(color.getGreen());
-                    track.setIsOn(lightStatus);
-                    track.setName(light.metadata().name());
-                    this.lightBulbTrackRepo.save(track);
+//                    LightBulbTrack track = new LightBulbTrack();
+//                    track.setLightId(lightId);
+//                    track.setDeviceId(deviceId);
+//                    track.setBrightness(light.dimming.brightness());
+//                    track.setRed(color.getRed());
+//                    track.setBlue(color.getBlue());
+//                    track.setGreen(color.getGreen());
+//                    track.setIsOn(lightStatus);
+//                    track.setName(light.metadata().name());
+//                    track.setRoomId();
+//                    this.lightBulbTrackRepo.save(track);
 
                     lightBulbs.add(lightBulb);
                 }
@@ -192,6 +197,11 @@ public class LightsService {
             .body(HueRoomResponse.class);
 
         response.data().forEach(room -> {
+             String groupId = room.services().stream()
+                    .filter(s -> s.rtype().equals("grouped_light"))
+                    .findFirst()
+                     .get()
+                     .rid();
             // Populates existing room or creates new room with lightbulbs and group ID
             if (mappedLightBulbs.containsKey(room.id())) {
                 HueRoom hueRoom = mappedLightBulbs.get(room.id());
@@ -223,9 +233,40 @@ public class LightsService {
                             return bulb.getDeviceId().equals(child.rid());
                         }).findFirst();
 
-                    lightBulb.ifPresent(hueRoom::addLightBulb);
+                    if (lightBulb.isPresent()) {
+                        hueRoom.addLightBulb(lightBulb.get());
+
+                        // Check for the existence of the bulb in light_bulbs, if it doesn't exist, add it.
+                        Optional<LightBulbTrack> lbt = lightBulbTrackRepo.selectLightBulbByFactoryId(
+                                lightBulb.get().getLightId());
+
+                        if (lbt.isEmpty()) {
+                            LightBulbTrack newLbt = new LightBulbTrack();
+                            newLbt.setBrightness(lightBulb.get().getBrightness());
+                            newLbt.setBlue(lightBulb.get().getColor().getBlue());
+                            newLbt.setRed(lightBulb.get().getColor().getRed());
+                            newLbt.setGreen(lightBulb.get().getColor().getGreen());
+                            newLbt.setDeviceId(lightBulb.get().getDeviceId());
+                            newLbt.setLightId(lightBulb.get().getLightId());
+                            newLbt.setName(lightBulb.get().getName());
+                            newLbt.setIsOn(lightBulb.get().getLightStatus());
+                            newLbt.setRoomId(room.id());
+
+                            lightBulbTrackRepo.save(newLbt);
+                        }
+                    }
                 });
+
                 mappedLightBulbs.put(room.id(), hueRoom);
+            }
+
+            // Check if the roomID exists in rooms, if not, add it.
+            if (this.roomRepo.findById(room.id()).isEmpty()) {
+                Room newRoom = new Room(room.id());
+                newRoom.setRoomName(room.metadata().name());
+                newRoom.setGroupId(groupId);
+
+                this.roomRepo.save(newRoom);
             }
         });
 
@@ -557,4 +598,8 @@ public class LightsService {
         return ResponseEntity.ok(new GetBulbsForGroupResponse(groupId, roomName, isMultiColor.get(),
             colorGradient.toString(), textColor.get(), isGroupOn.get(), brightness.get(), lightBulbs));
     }
+
+//    public RGB setAllBulbsInRoomToOneColor(String roomId, RGB newColor) {
+//
+//    }
 }

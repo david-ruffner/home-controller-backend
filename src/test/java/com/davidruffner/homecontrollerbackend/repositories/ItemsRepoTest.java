@@ -5,12 +5,10 @@ import com.davidruffner.homecontrollerbackend.entities.inventory.Item;
 import com.davidruffner.homecontrollerbackend.entities.inventory.Room;
 import com.davidruffner.homecontrollerbackend.repositories.inventory.CategoryRepository;
 import com.davidruffner.homecontrollerbackend.repositories.inventory.ItemRepository;
-import com.davidruffner.homecontrollerbackend.repositories.inventory.RoomRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import static java.lang.System.out;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest

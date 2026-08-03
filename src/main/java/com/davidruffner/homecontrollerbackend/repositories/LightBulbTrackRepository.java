@@ -12,6 +12,12 @@ import java.util.Optional;
 
 @Repository
 public interface LightBulbTrackRepository extends JpaRepository<LightBulbTrack, String> {
+    @Query("""
+        select lb from LightBulbTrack lb
+        where lb.lightBulbId = :lightBulbId
+    """)
+    Optional<LightBulbTrack> selectLightBulbByFactoryId(String lightBulbId);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
     @Query("""

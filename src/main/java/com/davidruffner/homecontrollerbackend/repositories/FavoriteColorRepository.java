@@ -13,50 +13,27 @@ import java.util.Optional;
 
 @Repository
 public interface FavoriteColorRepository extends JpaRepository<FavoriteColor, String> {
-
     @Query("""
         select c from FavoriteColor c
-        where c.groupId = :groupId
+        where c.roomId = :roomId
     """)
-    public List<FavoriteColor> getColorsByGroupId(@Param("groupId") String groupId);
-
-    @Query("""
-        select c from FavoriteColor c
-        where c.lightId = :lightId
-    """)
-    public List<FavoriteColor> getColorsByLightId(@Param("lightId") String lightId);
-
-    @Query("""
-        select c from FavoriteColor c
-        where c.controlDeviceId = :controlDeviceId
-            and c.lightId is not null
-            and c.groupId is null
-    """)
-    public List<FavoriteColor> getFavoriteColorsForSingleLight(@Param("controlDeviceId") String controlDeviceId);
-
-    @Query("""
-        select c from FavoriteColor c
-        where c.controlDeviceId = :controlDeviceId
-            and c.lightId is null
-            and c.groupId is not null
-    """)
-    public List<FavoriteColor> getFavoriteColorForLightGroup(@Param("controlDeviceId") String controlDeviceId);
+    public List<FavoriteColor> getFavoriteColorsForRoom(@Param("roomId") String roomId);
 
     @Modifying
     @Transactional
     @Query("""
-        delete from FavoriteColor c
-        where c.index = :indexNum
+        delete from FavoriteColor fc
+        where fc.roomId = :roomId
+            and fc.favoriteColorId = :favoriteColorId
     """)
-    public void deleteByIndexNum(@Param("indexNum") Integer indexNum);
+    void deleteFavoriteColorForRoom(@Param("roomId") String roomId,
+                                           @Param("favoriteColorId") String favoriteColorId);
 
-    @Modifying
-    @Transactional
     @Query("""
-        update FavoriteColor fc
-            set fc.color = :newColor
-        where fc.favoriteColorId = :favoriteColorId
+        select c from FavoriteColor c
+        where c.roomId = :roomId
+        order by c.timestamp asc
+        limit 1
     """)
-    void updateFavoriteColorByFavoriteColorId(@Param("newColor") String newColor,
-        @Param("favoriteColorId") String favoriteColorId);
+    public FavoriteColor getEarliestFavoriteColorOfRoom(@Param("roomId") String roomId);
 }

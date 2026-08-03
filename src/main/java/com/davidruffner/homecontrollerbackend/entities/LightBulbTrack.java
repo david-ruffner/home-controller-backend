@@ -39,6 +39,9 @@ public class LightBulbTrack {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "room_id", nullable = false)
+    private String roomId;
+
     public LightBulbTrack() {
         this.lightBulbId = UUID.randomUUID().toString();
     }
@@ -105,6 +108,14 @@ public class LightBulbTrack {
         } else {
             this.isOn = 0;
         }
+    }
+
+    public String getRoomId() {
+        return roomId;
+    }
+
+    public void setRoomId(String roomId) {
+        this.roomId = roomId;
     }
 
     public String getName() {

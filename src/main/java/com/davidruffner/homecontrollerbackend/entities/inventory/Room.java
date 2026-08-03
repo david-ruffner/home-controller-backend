@@ -16,6 +16,9 @@ public class Room {
     @Column(name = "room_name")
     private String roomName;
 
+    @Column(name = "group_id", nullable = false)
+    private String groupId;
+
     @OneToMany(mappedBy = "room", fetch = FetchType.LAZY)
     private List<Item> items = new ArrayList<>();
 
@@ -41,5 +44,13 @@ public class Room {
 
     public void setRoomName(String roomName) {
         this.roomName = roomName;
+    }
+
+    public String getGroupId() {
+        return groupId;
+    }
+
+    public void setGroupId(String groupId) {
+        this.groupId = groupId;
     }
 }

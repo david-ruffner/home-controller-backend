@@ -1,33 +1,28 @@
 package com.davidruffner.homecontrollerbackend.controllers;
 
 import com.davidruffner.homecontrollerbackend.builders.InventorySearchQueryBuilder;
-import com.davidruffner.homecontrollerbackend.dtos.InventoryDTO;
 import com.davidruffner.homecontrollerbackend.dtos.InventoryDTO.*;
 import com.davidruffner.homecontrollerbackend.entities.inventory.Category;
 import com.davidruffner.homecontrollerbackend.entities.inventory.Item;
 import com.davidruffner.homecontrollerbackend.entities.inventory.ItemContainer;
 import com.davidruffner.homecontrollerbackend.entities.inventory.Room;
 import com.davidruffner.homecontrollerbackend.enums.ResponseCode;
-import com.davidruffner.homecontrollerbackend.enums.ShortCode;
 import com.davidruffner.homecontrollerbackend.exceptions.ControllerException;
 import com.davidruffner.homecontrollerbackend.repositories.inventory.CategoryRepository;
 import com.davidruffner.homecontrollerbackend.repositories.inventory.ItemContainerRepository;
 import com.davidruffner.homecontrollerbackend.repositories.inventory.ItemRepository;
-import com.davidruffner.homecontrollerbackend.repositories.inventory.RoomRepository;
+import com.davidruffner.homecontrollerbackend.repositories.RoomRepository;
 import com.davidruffner.homecontrollerbackend.utils.Utils;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
 
-import static com.davidruffner.homecontrollerbackend.enums.ResponseCode.BAD_REQUEST;
 import static com.davidruffner.homecontrollerbackend.enums.ShortCode.*;
-import static com.davidruffner.homecontrollerbackend.enums.ShortCode.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.OK;
 
 @RestController
